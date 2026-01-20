@@ -1,21 +1,176 @@
-```txt
-npm install
-npm run dev
+# 하라쉬 말씀읽기 📖
+
+**새롬교회 전교인 성경읽기 참여 프로그램**
+
+## 🎯 프로젝트 개요
+- **교회명**: 새롬교회
+- **앱 이름**: 하라쉬 말씀읽기
+- **목표**: 하루 5장씩 성경을 읽으며 전교인이 함께 말씀으로 성장하는 프로그램
+- **참고 UI**: 듀오링고 스타일의 인터랙티브하고 직관적인 사용자 경험
+
+## 🌐 접속 URL
+- **개발 서버**: https://3000-i7rdou1uem2fco2f9aisu-8f57ffe2.sandbox.novita.ai
+- **테스트 계정**: test1@example.com / test1234
+
+## ✨ 주요 기능
+
+### 1️⃣ 말씀 읽기 (최우선)
+- 하루 5장씩 체크인 시스템
+- 원형 진행 차트로 오늘의 진행도 시각화
+- 5장 완독 시 축하 애니메이션 및 배지 획득
+
+### 2️⃣ 완독 체크
+- 일일 완독 여부 자동 기록
+- 읽기 기록은 D1 데이터베이스에 영구 저장
+- 날짜별 완독 이력 관리
+
+### 3️⃣ 칭찬과 격려
+- 🔥 연속 읽기 기록 (Streak) 시스템
+- 배지 시스템 (첫걸음, 일주일 완주, 한달 완주, 백일 완주 등)
+- 팀별 / 개인별 리더보드
+- 총 완독 일수 카운트
+
+### 4️⃣ 아기자기한 UI
+- 듀오링고 스타일의 보라색 그라데이션 테마
+- 부드러운 애니메이션과 호버 효과
+- 직관적인 아이콘과 이모지 활용
+- 반응형 디자인 (모바일 최적화)
+
+## 🏗️ 시스템 아키텍처
+
+### 조직 구조
+```
+새롬교회
+├── 청년부
+│   ├── 김성경
+│   └── 이말씀
+├── 장년부
+│   └── 박하나님
+└── 학생부
 ```
 
-```txt
-npm run deploy
+### 데이터 모델
+- **Churches**: 교회 정보
+- **Teams**: 팀 정보 (청년부, 장년부, 학생부 등)
+- **Users**: 사용자 정보 (이름, 이메일, 소속팀, Streak, 총 완독일수)
+- **Reading_logs**: 일일 읽기 기록
+- **Badges**: 배지 정보
+- **User_badges**: 사용자 획득 배지
+
+### 기술 스택
+- **프론트엔드**: Vanilla JS + Tailwind CSS + FontAwesome
+- **백엔드**: Hono (Cloudflare Workers)
+- **데이터베이스**: Cloudflare D1 (SQLite)
+- **배포**: Cloudflare Pages
+
+## 📊 현재 구현 상태
+
+### ✅ 완료된 기능
+1. ✅ 사용자 인증 (로그인/로그아웃)
+2. ✅ 하루 5장 체크인 시스템
+3. ✅ 연속 읽기 기록 (Streak) 자동 계산
+4. ✅ 총 완독일수 추적
+5. ✅ 원형 진행 차트 UI
+6. ✅ 완독 축하 애니메이션
+7. ✅ 팀 순위 리더보드
+8. ✅ 개인 순위 리더보드
+9. ✅ 배지 시스템 데이터 구조
+10. ✅ 반응형 UI 디자인
+
+### 🚧 추가 개발 예정
+1. 🔲 Google Sheets 연동 (성경 데이터 / 교인 데이터 동기화)
+2. 🔲 PWA 설정 (앱처럼 설치, 푸시 알림)
+3. 🔲 배지 자동 부여 시스템
+4. 🔲 팀원 간 응원 메시지 기능
+5. 🔲 주간/월간 통계 대시보드
+6. 🔲 성경 구절 공유 기능
+
+## 🚀 개발 환경 설정
+
+### 로컬 개발 서버 시작
+```bash
+# 빌드
+npm run build
+
+# 서버 시작
+pm2 start ecosystem.config.cjs
+
+# 로그 확인
+pm2 logs harash-bible-reading --nostream
+
+# 서버 재시작
+fuser -k 3000/tcp 2>/dev/null || true
+pm2 restart harash-bible-reading
 ```
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+### 데이터베이스 관리
+```bash
+# 마이그레이션 적용
+npm run db:migrate:local
 
-```txt
-npm run cf-typegen
+# 테스트 데이터 삽입
+npm run db:seed
+
+# 데이터베이스 초기화
+npm run db:reset
 ```
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
+## 📱 사용자 가이드
 
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+### 로그인
+1. 이메일과 비밀번호로 로그인
+2. 테스트 계정: test1@example.com / test1234
+
+### 말씀 읽기
+1. 메인 화면에서 오늘의 진행도 확인
+2. 1장부터 5장까지 순서대로 버튼 클릭
+3. 5장 완독 시 축하 메시지와 Streak 업데이트
+
+### 순위 확인
+1. **팀 순위 탭**: 팀별 총 완독일수와 평균 Streak 확인
+2. **개인 순위 탭**: 개인별 Streak와 총 완독일수 확인
+
+### Streak 시스템
+- **연속 읽기**: 전날 완독 + 오늘 완독 시 Streak 증가
+- **중단**: 하루라도 놓치면 Streak 초기화
+- **아이콘**: 🔥 불꽃 이모지로 표시
+
+## 🎨 UI 특징
+
+### 색상 테마
+- 메인 그라데이션: 보라색 (#667eea) → 인디고 (#764ba2)
+- 포인트 색상: 보라색 (#9333ea), 주황색 (Streak)
+- 배경: 밝은 회색 (#f9fafb)
+
+### 애니메이션
+- 원형 진행 차트 애니메이션
+- 🔥 불꽃 깜빡임 효과
+- 카드 호버 효과
+- 완독 시 축하 애니메이션
+
+## 📈 다음 개발 단계
+
+### 우선순위 1: Google Sheets 연동
+- 성경 읽기 계획 데이터 (어떤 성경 본문을 읽을지)
+- 교인 정보 동기화
+- 실시간 진행도 업데이트
+
+### 우선순위 2: PWA 기능
+- 홈 화면에 설치
+- 오프라인 지원
+- 푸시 알림 (매일 리마인더)
+
+### 우선순위 3: 소셜 기능
+- 팀원 간 응원 메시지
+- 오늘의 말씀 공유
+- 팀 채팅방
+
+## 📝 개발 노트
+- **마지막 업데이트**: 2026-01-20
+- **개발 플랫폼**: Cloudflare Pages + D1 Database
+- **배포 상태**: 로컬 개발 환경 (프로덕션 배포 대기)
+- **테스트 상태**: ✅ 기본 기능 테스트 완료
+
+---
+
+**Made with ❤️ for 새롬교회**
