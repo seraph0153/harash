@@ -171,6 +171,60 @@ app.get('/api/badges/:userId', async (c) => {
   return c.json(result.results)
 })
 
+// 성경 읽기 계획 조회
+app.get('/api/bible-plan', async (c) => {
+  const result = await c.env.DB.prepare(
+    'SELECT * FROM bible_reading_plan ORDER BY day_number'
+  ).all()
+  
+  return c.json(result.results)
+})
+
+// 오늘의 성경 읽기 계획
+app.get('/api/bible-plan/today', async (c) => {
+  const today = new Date().toISOString().split('T')[0]
+  
+  const plan = await c.env.DB.prepare(
+    'SELECT * FROM bible_reading_plan WHERE date = ?'
+  ).bind(today).first()
+  
+  if (!plan) {
+    return c.json({ error: '오늘의 계획이 없습니다.' }, 404)
+  }
+  
+  return c.json(plan)
+})
+
+// 성경 본문 조회
+app.get('/api/bible/:book/:chapter', async (c) => {
+  const book = c.req.param('book')
+  const chapter = parseInt(c.req.param('chapter'))
+  
+  const result = await c.env.DB.prepare(
+    'SELECT * FROM bible_texts WHERE book_name = ? AND chapter = ? ORDER BY verse'
+  ).bind(book, chapter).all()
+  
+  return c.json(result.results)
+})
+
+// 팀원들의 진행도 조회 (맵에 표시용)
+app.get('/api/team/:teamId/progress', async (c) => {
+  const teamId = c.req.param('teamId')
+  
+  const result = await c.env.DB.prepare(
+    `SELECT 
+      u.id,
+      u.name,
+      u.total_days_read,
+      u.streak_count
+     FROM users u
+     WHERE u.team_id = ?
+     ORDER BY u.total_days_read DESC`
+  ).bind(teamId).all()
+  
+  return c.json(result.results)
+})
+
 // 메인 페이지
 app.get('/', (c) => {
   return c.html(`
