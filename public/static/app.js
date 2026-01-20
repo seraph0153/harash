@@ -97,15 +97,43 @@ async function showMainApp() {
   const app = document.getElementById('app');
   
   // 오늘의 읽기 기록 조회
-  const todayLog = await axios.get(\`/api/reading/\${currentUser.id}/today\`);
+  const todayLog = await axios.get('/api/reading/' + currentUser.id + '/today');
   const chaptersRead = todayLog.data.chapters_read || 0;
   const isCompleted = todayLog.data.completed || false;
   
   // 사용자 최신 정보 조회
-  const userInfo = await axios.get(\`/api/user/\${currentUser.id}\`);
+  const userInfo = await axios.get('/api/user/' + currentUser.id);
   currentUser = { ...currentUser, ...userInfo.data };
   
   const progress = (chaptersRead / 5) * 100;
+  const dashoffset = 565.48 - (565.48 * progress / 100);
+  
+  let chaptersHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const isChecked = chaptersRead >= i;
+    chaptersHTML += `
+      <button 
+        onclick="checkChapter(${i})"
+        class="chapter-btn ${isChecked ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400'} 
+               py-4 rounded-xl font-bold text-lg hover:scale-105 transition-all"
+        ${isChecked ? 'disabled' : ''}
+      >
+        ${isChecked ? '✓' : i + '장'}
+      </button>
+    `;
+  }
+  
+  const completedHTML = isCompleted ? `
+    <div class="bg-green-50 border-2 border-green-500 rounded-xl p-4 text-center mb-4">
+      <div class="text-4xl mb-2">🎉</div>
+      <div class="text-green-800 font-semibold">오늘의 말씀을 완독하셨습니다!</div>
+      <div class="text-green-600 text-sm mt-1">주님께서 기뻐하십니다</div>
+    </div>
+  ` : `
+    <div class="grid grid-cols-5 gap-2 mb-4">
+      ${chaptersHTML}
+    </div>
+  `;
   
   app.innerHTML = `
     <div class="min-h-screen bg-gray-50">
@@ -168,7 +196,7 @@ async function showMainApp() {
                   stroke-width="12" 
                   fill="none"
                   stroke-dasharray="565.48"
-                  stroke-dashoffset="${565.48 - (565.48 * progress / 100)}"
+                  stroke-dashoffset="${dashoffset}"
                   stroke-linecap="round"
                   style="transition: stroke-dashoffset 0.5s ease"
                 />
@@ -186,27 +214,7 @@ async function showMainApp() {
             </div>
           </div>
           
-          ${isCompleted ? `
-            <div class="bg-green-50 border-2 border-green-500 rounded-xl p-4 text-center mb-4">
-              <div class="text-4xl mb-2">🎉</div>
-              <div class="text-green-800 font-semibold">오늘의 말씀을 완독하셨습니다!</div>
-              <div class="text-green-600 text-sm mt-1">주님께서 기뻐하십니다</div>
-            </div>
-          ` : `
-            <!-- 체크인 버튼 -->
-            <div class="grid grid-cols-5 gap-2 mb-4">
-              ${[1,2,3,4,5].map(i => `
-                <button 
-                  onclick="checkChapter(${i})"
-                  class="chapter-btn ${chaptersRead >= i ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400'} 
-                         py-4 rounded-xl font-bold text-lg hover:scale-105 transition-all"
-                  ${chaptersRead >= i ? 'disabled' : ''}
-                >
-                  ${chaptersRead >= i ? '✓' : i + '장'}
-                </button>
-              `).join('')}
-            </div>
-          `}
+          ${completedHTML}
           
           <div class="text-center text-sm text-gray-500 mt-4">
             <i class="fas fa-info-circle mr-1"></i>
@@ -240,7 +248,7 @@ async function showMainApp() {
 // 장 체크인
 async function checkChapter(chapter) {
   try {
-    const response = await axios.post(\`/api/reading/\${currentUser.id}\`, {
+    const response = await axios.post('/api/reading/' + currentUser.id, {
       chapters_read: chapter
     });
     
@@ -271,27 +279,29 @@ async function showTab(tab) {
     const response = await axios.get('/api/leaderboard/teams');
     const teams = response.data;
     
-    content.innerHTML = `
-      <div class="space-y-3">
-        ${teams.map((team, index) => \`
-          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-            <div class="flex items-center space-x-4">
-              <div class="text-2xl font-bold ${index < 3 ? 'text-purple-600' : 'text-gray-400'}">
-                ${index + 1}
-              </div>
-              <div>
-                <div class="font-semibold text-gray-800">\${team.name}</div>
-                <div class="text-sm text-gray-500">\${team.member_count}명</div>
-              </div>
+    let teamsHTML = '';
+    teams.forEach((team, index) => {
+      const rankColor = index < 3 ? 'text-purple-600' : 'text-gray-400';
+      teamsHTML += `
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+          <div class="flex items-center space-x-4">
+            <div class="text-2xl font-bold ${rankColor}">
+              ${index + 1}
             </div>
-            <div class="text-right">
-              <div class="font-bold text-purple-600">\${team.total_reads || 0}일</div>
-              <div class="text-sm text-gray-500">총 완독</div>
+            <div>
+              <div class="font-semibold text-gray-800">${team.name}</div>
+              <div class="text-sm text-gray-500">${team.member_count}명</div>
             </div>
           </div>
-        \`).join('')}
-      </div>
-    `;
+          <div class="text-right">
+            <div class="font-bold text-purple-600">${team.total_reads || 0}일</div>
+            <div class="text-sm text-gray-500">총 완독</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    content.innerHTML = `<div class="space-y-3">${teamsHTML}</div>`;
   } else {
     teamBtn.className = 'flex-1 py-4 px-6 font-semibold text-gray-600 hover:bg-gray-50';
     personalBtn.className = 'flex-1 py-4 px-6 font-semibold bg-purple-50 text-purple-600 border-b-2 border-purple-600';
@@ -299,30 +309,33 @@ async function showTab(tab) {
     const response = await axios.get('/api/leaderboard/users');
     const users = response.data;
     
-    content.innerHTML = `
-      <div class="space-y-3">
-        ${users.map((user, index) => \`
-          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-            <div class="flex items-center space-x-4">
-              <div class="text-2xl font-bold ${index < 3 ? 'text-purple-600' : 'text-gray-400'}">
-                ${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-              </div>
-              <div>
-                <div class="font-semibold text-gray-800">\${user.name}</div>
-                <div class="text-sm text-gray-500">\${user.team_name || '팀 미지정'}</div>
-              </div>
+    let usersHTML = '';
+    users.forEach((user, index) => {
+      const rankColor = index < 3 ? 'text-purple-600' : 'text-gray-400';
+      const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1);
+      usersHTML += `
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+          <div class="flex items-center space-x-4">
+            <div class="text-2xl font-bold ${rankColor}">
+              ${rankIcon}
             </div>
-            <div class="text-right">
-              <div class="flex items-center space-x-2">
-                <span class="text-2xl">🔥</span>
-                <span class="font-bold text-orange-600">\${user.streak_count}</span>
-              </div>
-              <div class="text-sm text-gray-500">\${user.total_days_read}일 완독</div>
+            <div>
+              <div class="font-semibold text-gray-800">${user.name}</div>
+              <div class="text-sm text-gray-500">${user.team_name || '팀 미지정'}</div>
             </div>
           </div>
-        \`).join('')}
-      </div>
-    `;
+          <div class="text-right">
+            <div class="flex items-center space-x-2">
+              <span class="text-2xl">🔥</span>
+              <span class="font-bold text-orange-600">${user.streak_count}</span>
+            </div>
+            <div class="text-sm text-gray-500">${user.total_days_read}일 완독</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    content.innerHTML = `<div class="space-y-3">${usersHTML}</div>`;
   }
 }
 
@@ -336,13 +349,7 @@ function confetti() {
   for (let i = 0; i < 30; i++) {
     const emoji = document.createElement('div');
     emoji.textContent = messages[Math.floor(Math.random() * messages.length)];
-    emoji.style.cssText = \`
-      position:absolute;
-      left:\${Math.random() * 100}%;
-      top:-50px;
-      font-size:2rem;
-      animation: fall \${2 + Math.random() * 2}s linear;
-    \`;
+    emoji.style.cssText = 'position:absolute;left:' + (Math.random() * 100) + '%;top:-50px;font-size:2rem;animation: fall ' + (2 + Math.random() * 2) + 's linear;';
     container.appendChild(emoji);
   }
   
@@ -351,14 +358,14 @@ function confetti() {
 
 // 애니메이션 CSS 추가
 const style = document.createElement('style');
-style.textContent = \`
+style.textContent = `
   @keyframes fall {
     to {
       transform: translateY(100vh) rotate(360deg);
       opacity: 0;
     }
   }
-\`;
+`;
 document.head.appendChild(style);
 
 // 앱 시작
