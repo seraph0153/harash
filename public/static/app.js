@@ -105,6 +105,10 @@ async function showMapScreen() {
   biblePlan = planData.data;
   teamMembers = teamData.data;
   
+  // 관리자 권한 체크
+  const isAdmin = ['senior_pastor', 'associate_pastor', 'minister'].includes(currentUser.role);
+  const isLeader = ['team_leader', 'deputy_leader'].includes(currentUser.role);
+  
   app.innerHTML = `
     <div class="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100">
       <!-- 상단 헤더 -->
@@ -116,11 +120,13 @@ async function showMapScreen() {
             </div>
             <div>
               <div class="font-bold text-gray-800">${currentUser.name}</div>
-              <div class="text-xs text-gray-500">${currentUser.team_name || '팀 미지정'}</div>
+              <div class="text-xs text-gray-500">${getRoleKorean(currentUser.role)}</div>
             </div>
           </div>
           
           <div class="flex items-center space-x-4">
+            ${isAdmin ? '<button onclick="showAdminPanel()" class="text-purple-600 hover:text-purple-700"><i class="fas fa-cog"></i></button>' : ''}
+            ${isLeader ? '<button onclick="showTeamPanel()" class="text-blue-600 hover:text-blue-700"><i class="fas fa-users"></i></button>' : ''}
             <div class="flex items-center space-x-1">
               <span class="text-2xl">🔥</span>
               <span class="font-bold text-orange-600">${currentUser.streak_count}</span>
@@ -140,6 +146,298 @@ async function showMapScreen() {
       </div>
     </div>
   `;
+}
+
+// 역할 한글 변환
+function getRoleKorean(role) {
+  const roleMap = {
+    'senior_pastor': '담임목사',
+    'associate_pastor': '부목사',
+    'minister': '교역자',
+    'team_leader': '담당팀장',
+    'deputy_leader': '부팀장',
+    'member': '팀원'
+  };
+  return roleMap[role] || '팀원';
+}
+
+// 관리자 패널
+async function showAdminPanel() {
+  const app = document.getElementById('app');
+  
+  app.innerHTML = `
+    <div class="min-h-screen bg-gray-50">
+      <div class="bg-purple-600 text-white p-6">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <button onclick="showMapScreen()" class="hover:bg-purple-700 px-3 py-2 rounded-lg">
+              <i class="fas fa-arrow-left"></i>
+            </button>
+            <div>
+              <h1 class="text-2xl font-bold">관리자 패널</h1>
+              <p class="text-purple-200 text-sm">교인 관리 및 통계</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="max-w-6xl mx-auto p-6">
+        <!-- Google Sheets 동기화 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            <i class="fas fa-sync-alt text-green-600 mr-2"></i>
+            Google Sheets 동기화
+          </h2>
+          <p class="text-gray-600 mb-4">
+            스프레드시트 ID: <code class="bg-gray-100 px-2 py-1 rounded">1HVxGsugqLzmHASSyCy7dF_ANGfXfe7wQqDVwej3SH3Q</code>
+          </p>
+          <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+            <p class="text-sm text-blue-800">
+              <strong>Google Sheets 형식:</strong><br>
+              A열: 이름 | B열: 이메일 | C열: 비밀번호 | D열: 역할 (담임목사/부목사/교역자/담당팀장/부팀장/팀원) | E열: 팀 이름
+            </p>
+          </div>
+          <button 
+            onclick="syncGoogleSheets()"
+            id="syncBtn"
+            class="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+          >
+            <i class="fas fa-sync-alt mr-2"></i>
+            지금 동기화
+          </button>
+          <div id="syncResult" class="mt-4"></div>
+        </div>
+        
+        <!-- 통계 대시보드 -->
+        <div id="dashboard" class="space-y-6">
+          <div class="text-center text-gray-500">
+            <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+            <p>통계를 불러오는 중...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  loadAdminDashboard();
+}
+
+// 관리자 대시보드 로드
+async function loadAdminDashboard() {
+  try {
+    const response = await axios.get('/api/admin/dashboard');
+    const data = response.data;
+    
+    let rolesHTML = '';
+    data.roles.forEach(role => {
+      rolesHTML += `
+        <div class="bg-gray-50 rounded-xl p-4">
+          <div class="text-sm text-gray-500">${getRoleKorean(role.role)}</div>
+          <div class="text-3xl font-bold text-purple-600">${role.count}명</div>
+          <div class="text-xs text-gray-600 mt-1">평균 ${Math.round(role.avg_days || 0)}일 완독</div>
+        </div>
+      `;
+    });
+    
+    let teamsHTML = '';
+    data.teams.forEach((team, index) => {
+      teamsHTML += `
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+          <div class="flex items-center space-x-3">
+            <div class="text-2xl font-bold text-purple-600">${index + 1}</div>
+            <div>
+              <div class="font-semibold text-gray-800">${team.team_name}</div>
+              <div class="text-sm text-gray-500">${team.member_count}명</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold text-purple-600">${Math.round(team.avg_days || 0)}일</div>
+            <div class="text-xs text-gray-500">평균 완독</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    document.getElementById('dashboard').innerHTML = `
+      <!-- 전체 통계 -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">전체 교인</div>
+          <div class="text-4xl font-bold text-purple-600">${data.total.total_users}</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">활동 중</div>
+          <div class="text-4xl font-bold text-green-600">${data.total.active_users}</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">평균 완독</div>
+          <div class="text-4xl font-bold text-blue-600">${Math.round(data.total.avg_days || 0)}</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">최대 Streak</div>
+          <div class="text-4xl font-bold text-orange-600">${data.total.max_streak || 0}</div>
+        </div>
+      </div>
+      
+      <!-- 역할별 통계 -->
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">역할별 통계</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          ${rolesHTML}
+        </div>
+      </div>
+      
+      <!-- 팀별 순위 -->
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">팀별 순위</h3>
+        <div class="space-y-3">
+          ${teamsHTML}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    document.getElementById('dashboard').innerHTML = `
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800">
+        통계를 불러오는데 실패했습니다.
+      </div>
+    `;
+  }
+}
+
+// Google Sheets 동기화
+async function syncGoogleSheets() {
+  const btn = document.getElementById('syncBtn');
+  const result = document.getElementById('syncResult');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>동기화 중...';
+  
+  try {
+    const response = await axios.post('/api/admin/sync-google-sheets');
+    
+    result.innerHTML = `
+      <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-green-800">
+        <i class="fas fa-check-circle mr-2"></i>
+        ${response.data.message}
+      </div>
+    `;
+    
+    // 대시보드 새로고침
+    setTimeout(() => loadAdminDashboard(), 1000);
+  } catch (error) {
+    result.innerHTML = `
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        동기화 실패: ${error.response?.data?.error || error.message}
+        <p class="text-sm mt-2">Google Sheets를 <strong>공개</strong>로 설정했는지 확인해주세요.</p>
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>지금 동기화';
+  }
+}
+
+// 팀장 패널
+async function showTeamPanel() {
+  const app = document.getElementById('app');
+  
+  if (!currentUser.team_id) {
+    alert('팀이 배정되지 않았습니다.');
+    return;
+  }
+  
+  app.innerHTML = `
+    <div class="min-h-screen bg-gray-50">
+      <div class="bg-blue-600 text-white p-6">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <button onclick="showMapScreen()" class="hover:bg-blue-700 px-3 py-2 rounded-lg">
+              <i class="fas fa-arrow-left"></i>
+            </button>
+            <div>
+              <h1 class="text-2xl font-bold">팀 관리</h1>
+              <p class="text-blue-200 text-sm">${currentUser.team_name}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="max-w-4xl mx-auto p-6">
+        <div id="teamDashboard" class="text-center text-gray-500">
+          <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+          <p>팀 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  loadTeamDashboard();
+}
+
+// 팀 대시보드 로드
+async function loadTeamDashboard() {
+  try {
+    const response = await axios.get('/api/team/' + currentUser.team_id + '/progress');
+    const members = response.data;
+    
+    let membersHTML = '';
+    members.forEach((member, index) => {
+      const isCurrentUser = member.id === currentUser.id;
+      membersHTML += `
+        <div class="flex items-center justify-between p-4 bg-white rounded-xl shadow ${isCurrentUser ? 'border-2 border-purple-600' : ''}">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full ${isCurrentUser ? 'bg-purple-600' : 'bg-gray-400'} flex items-center justify-center text-white font-bold">
+              ${member.name[0]}
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800">
+                ${member.name}
+                ${isCurrentUser ? '<span class="text-xs text-purple-600 ml-2">(나)</span>' : ''}
+              </div>
+              <div class="text-sm text-gray-500">${member.total_days_read}일 완독</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-2xl">🔥</span>
+            <span class="font-bold text-orange-600">${member.streak_count}</span>
+          </div>
+        </div>
+      `;
+    });
+    
+    const avgDays = members.length > 0 
+      ? Math.round(members.reduce((sum, m) => sum + m.total_days_read, 0) / members.length)
+      : 0;
+    
+    document.getElementById('teamDashboard').innerHTML = `
+      <!-- 팀 통계 -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">팀원 수</div>
+          <div class="text-4xl font-bold text-blue-600">${members.length}명</div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="text-sm text-gray-500 mb-2">평균 완독</div>
+          <div class="text-4xl font-bold text-purple-600">${avgDays}일</div>
+        </div>
+      </div>
+      
+      <!-- 팀원 목록 -->
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">팀원 목록</h3>
+        <div class="space-y-3">
+          ${membersHTML}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    document.getElementById('teamDashboard').innerHTML = `
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800">
+        팀 정보를 불러오는데 실패했습니다.
+      </div>
+    `;
+  }
 }
 
 // 성경 읽기 맵 렌더링 (듀오링고 스타일)
@@ -365,3 +663,6 @@ window.showMapScreen = showMapScreen;
 window.showReadingScreen = showReadingScreen;
 window.playAudio = playAudio;
 window.completeReading = completeReading;
+window.showAdminPanel = showAdminPanel;
+window.syncGoogleSheets = syncGoogleSheets;
+window.showTeamPanel = showTeamPanel;

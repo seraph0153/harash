@@ -4,9 +4,24 @@ import { serveStatic } from 'hono/cloudflare-workers'
 
 type Bindings = {
   DB: D1Database
+  GOOGLE_SHEETS_API_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
+
+// Google Sheets 설정
+const SPREADSHEET_ID = '1HVxGsugqLzmHASSyCy7dF_ANGfXfe7wQqDVwej3SH3Q'
+const SHEET_NAME = 'Sheet1' // 시트 이름 (필요시 변경)
+
+// 역할 매핑
+const ROLE_MAP: Record<string, string> = {
+  '담임목사': 'senior_pastor',
+  '부목사': 'associate_pastor',
+  '교역자': 'minister',
+  '담당팀장': 'team_leader',
+  '부팀장': 'deputy_leader',
+  '팀원': 'member'
+}
 
 // CORS 설정
 app.use('/api/*', cors())
@@ -223,6 +238,172 @@ app.get('/api/team/:teamId/progress', async (c) => {
   ).bind(teamId).all()
   
   return c.json(result.results)
+})
+
+// Google Sheets에서 교인 데이터 동기화
+app.post('/api/admin/sync-google-sheets', async (c) => {
+  try {
+    // Google Sheets API 키가 없으면 공개 시트로 접근 시도
+    const apiKey = c.env.GOOGLE_SHEETS_API_KEY || ''
+    
+    // Google Sheets API 호출
+    const url = apiKey 
+      ? `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${apiKey}`
+      : `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`
+    
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      return c.json({ 
+        error: 'Google Sheets 접근 실패. 시트를 공개로 설정하거나 API 키를 설정해주세요.',
+        details: await response.text()
+      }, 400)
+    }
+    
+    let rows: any[] = []
+    
+    if (apiKey) {
+      // 정식 API 사용
+      const data = await response.json()
+      rows = data.values || []
+    } else {
+      // 공개 시트 JSON 파싱
+      const text = await response.text()
+      const jsonText = text.substring(47).slice(0, -2)
+      const data = JSON.parse(jsonText)
+      rows = data.table.rows.map((row: any) => 
+        row.c.map((cell: any) => cell?.v || '')
+      )
+    }
+    
+    if (rows.length < 2) {
+      return c.json({ error: '데이터가 없습니다.' }, 400)
+    }
+    
+    // 첫 번째 행은 헤더
+    const headers = rows[0]
+    const dataRows = rows.slice(1)
+    
+    let syncedCount = 0
+    let errorCount = 0
+    
+    for (const row of dataRows) {
+      try {
+        const name = row[0]
+        const email = row[1]
+        const password = row[2] || 'welcome1234'
+        const roleKr = row[3] || '팀원'
+        const teamName = row[4]
+        
+        if (!name || !email) continue
+        
+        const role = ROLE_MAP[roleKr] || 'member'
+        
+        // 팀 찾기 또는 생성
+        let teamId = null
+        if (teamName) {
+          const team = await c.env.DB.prepare(
+            'SELECT id FROM teams WHERE name = ? AND church_id = 1'
+          ).bind(teamName).first()
+          
+          if (team) {
+            teamId = team.id
+          } else {
+            const newTeam = await c.env.DB.prepare(
+              'INSERT INTO teams (name, church_id) VALUES (?, 1) RETURNING id'
+            ).bind(teamName).first()
+            teamId = newTeam?.id
+          }
+        }
+        
+        // 사용자 생성 또는 업데이트
+        await c.env.DB.prepare(
+          `INSERT INTO users (name, email, password_hash, role, team_id, church_id)
+           VALUES (?, ?, ?, ?, ?, 1)
+           ON CONFLICT(email) 
+           DO UPDATE SET name = ?, role = ?, team_id = ?`
+        ).bind(
+          name, email, password, role, teamId,
+          name, role, teamId
+        ).run()
+        
+        syncedCount++
+      } catch (err) {
+        errorCount++
+        console.error('Row sync error:', err)
+      }
+    }
+    
+    // 동기화 로그 저장
+    await c.env.DB.prepare(
+      'INSERT INTO sync_logs (sync_type, status, message) VALUES (?, ?, ?)'
+    ).bind(
+      'google_sheets',
+      'success',
+      `${syncedCount}명 동기화 완료, ${errorCount}개 오류`
+    ).run()
+    
+    return c.json({ 
+      success: true, 
+      synced: syncedCount,
+      errors: errorCount,
+      message: `${syncedCount}명의 교인 데이터를 동기화했습니다.`
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
+    
+    await c.env.DB.prepare(
+      'INSERT INTO sync_logs (sync_type, status, message) VALUES (?, ?, ?)'
+    ).bind('google_sheets', 'error', errorMessage).run()
+    
+    return c.json({ 
+      error: 'Google Sheets 동기화 실패', 
+      details: errorMessage 
+    }, 500)
+  }
+})
+
+// 관리자 대시보드 - 전체 교인 현황
+app.get('/api/admin/dashboard', async (c) => {
+  // 역할별 통계
+  const roleStats = await c.env.DB.prepare(
+    `SELECT 
+      role,
+      COUNT(*) as count,
+      AVG(total_days_read) as avg_days,
+      AVG(streak_count) as avg_streak
+     FROM users
+     GROUP BY role`
+  ).all()
+  
+  // 팀별 통계
+  const teamStats = await c.env.DB.prepare(
+    `SELECT 
+      t.name as team_name,
+      COUNT(u.id) as member_count,
+      AVG(u.total_days_read) as avg_days,
+      MAX(u.total_days_read) as max_days
+     FROM teams t
+     LEFT JOIN users u ON t.id = u.team_id
+     GROUP BY t.id, t.name
+     ORDER BY avg_days DESC`
+  ).all()
+  
+  // 전체 통계
+  const totalStats = await c.env.DB.prepare(
+    `SELECT 
+      COUNT(*) as total_users,
+      SUM(CASE WHEN total_days_read > 0 THEN 1 ELSE 0 END) as active_users,
+      AVG(total_days_read) as avg_days,
+      MAX(streak_count) as max_streak
+     FROM users`
+  ).first()
+  
+  return c.json({
+    roles: roleStats.results,
+    teams: teamStats.results,
+    total: totalStats
+  })
 })
 
 // 메인 페이지
