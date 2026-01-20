@@ -231,11 +231,99 @@ app.get('/api/team/:teamId/progress', async (c) => {
       u.id,
       u.name,
       u.total_days_read,
-      u.streak_count
+      u.streak_count,
+      u.avatar_emoji,
+      u.avatar_url
      FROM users u
      WHERE u.team_id = ?
      ORDER BY u.total_days_read DESC`
   ).bind(teamId).all()
+  
+  return c.json(result.results)
+})
+
+// 관리자 설정 조회
+app.get('/api/admin/settings', async (c) => {
+  const settings = await c.env.DB.prepare(
+    'SELECT * FROM admin_settings WHERE id = 1'
+  ).first()
+  
+  return c.json(settings || {
+    program_start_date: '2026-01-21',
+    reading_days: 'mon,tue,wed,thu,fri'
+  })
+})
+
+// 관리자 설정 업데이트
+app.post('/api/admin/settings', async (c) => {
+  const { program_start_date, reading_days } = await c.req.json()
+  
+  await c.env.DB.prepare(
+    `INSERT INTO admin_settings (id, program_start_date, reading_days, updated_at)
+     VALUES (1, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(id) DO UPDATE SET 
+       program_start_date = ?,
+       reading_days = ?,
+       updated_at = CURRENT_TIMESTAMP`
+  ).bind(program_start_date, reading_days, program_start_date, reading_days).run()
+  
+  return c.json({ success: true })
+})
+
+// 사용자 아바타 업데이트
+app.post('/api/user/:userId/avatar', async (c) => {
+  const userId = c.req.param('userId')
+  const { avatar_emoji, avatar_url } = await c.req.json()
+  
+  await c.env.DB.prepare(
+    'UPDATE users SET avatar_emoji = ?, avatar_url = ? WHERE id = ?'
+  ).bind(avatar_emoji || null, avatar_url || null, userId).run()
+  
+  return c.json({ success: true })
+})
+
+// 풍선 댓글 추가
+app.post('/api/encouragement', async (c) => {
+  const { from_user_id, to_user_id, reading_log_id, emoji, message } = await c.req.json()
+  
+  await c.env.DB.prepare(
+    'INSERT INTO encouragements_new (from_user_id, to_user_id, reading_log_id, emoji, message) VALUES (?, ?, ?, ?, ?)'
+  ).bind(from_user_id, to_user_id, reading_log_id, emoji, message || null).run()
+  
+  return c.json({ success: true })
+})
+
+// 특정 읽기 로그의 풍선 댓글 조회
+app.get('/api/encouragement/log/:logId', async (c) => {
+  const logId = c.req.param('logId')
+  
+  const result = await c.env.DB.prepare(
+    `SELECT e.*, u.name as from_user_name
+     FROM encouragements_new e
+     JOIN users u ON e.from_user_id = u.id
+     WHERE e.reading_log_id = ?
+     ORDER BY e.created_at DESC`
+  ).bind(logId).all()
+  
+  return c.json(result.results)
+})
+
+// 전체 팀원 진행도 조회 (가로 맵용)
+app.get('/api/progress/all', async (c) => {
+  const result = await c.env.DB.prepare(
+    `SELECT 
+      u.id,
+      u.name,
+      u.total_days_read,
+      u.streak_count,
+      u.avatar_emoji,
+      u.avatar_url,
+      t.name as team_name
+     FROM users u
+     LEFT JOIN teams t ON u.team_id = t.id
+     WHERE u.church_id = 1
+     ORDER BY u.total_days_read DESC`
+  ).all()
   
   return c.json(result.results)
 })
