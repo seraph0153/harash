@@ -4,17 +4,141 @@ let biblePlan = [];
 let allUsers = [];
 let adminSettings = null;
 
+// 성경 데이터 변수
+let bibleData = null;
+
+// Inject Fonts
+const fontStyle = document.createElement('style');
+fontStyle.textContent = `@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang&family=Gowun+Dodum&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@300;400;700&display=swap');`;
+document.head.appendChild(fontStyle);
+
+// Bible Book Codes (전체)
+const BIBLE_BOOK_CODES = {
+  '창세기': 'gen', '창': 'gen',
+  '출애굽기': 'exo', '출': 'exo',
+  '레위기': 'lev', '레': 'lev',
+  '민수기': 'num', '민': 'num',
+  '신명기': 'deu', '신': 'deu',
+  '여호수아': 'jos', '수': 'jos',
+  '사사기': 'jdg', '삿': 'jdg',
+  '룻기': 'rut', '룻': 'rut',
+  '사무엘상': '1sa', '삼상': '1sa',
+  '사무엘하': '2sa', '삼하': '2sa',
+  '열왕기상': '1ki', '왕상': '1ki',
+  '열왕기하': '2ki', '왕하': '2ki',
+  '역대상': '1ch', '대상': '1ch',
+  '역대하': '2ch', '대하': '2ch',
+  '에스라': 'ezr', '스': 'ezr',
+  '느헤미야': 'neh', '느': 'neh',
+  '에스더': 'est', '에': 'est',
+  '욥기': 'job', '욥': 'job',
+  '시편': 'psa', '시': 'psa',
+  '잠언': 'pro', '잠': 'pro',
+  '전도서': 'ecc', '전': 'ecc',
+  '아가': 'son', '아': 'son',
+  '이사야': 'isa', '사': 'isa',
+  '예레미야': 'jer', '렘': 'jer',
+  '예레미야애가': 'lam', '애': 'lam',
+  '에스겔': 'eze', '겔': 'eze',
+  '다니엘': 'dan', '단': 'dan',
+  '호세아': 'hos', '호': 'hos',
+  '요엘': 'joe', '욜': 'joe',
+  '아모스': 'amo', '암': 'amo',
+  '오바댜': 'oba', '옵': 'oba',
+  '요나': 'jon', '욘': 'jon',
+  '미가': 'mic', '미': 'mic',
+  '나훔': 'nah', '나': 'nah',
+  '하박국': 'hab', '합': 'hab',
+  '스바냐': 'zep', '습': 'zep',
+  '학개': 'hag', '학': 'hag',
+  '스가랴': 'zec', '슥': 'zec',
+  '말라기': 'mal', '말': 'mal',
+  '마태복음': 'mat', '마': 'mat',
+  '마가복음': 'mar', '막': 'mar',
+  '누가복음': 'luk', '눅': 'luk',
+  '요한복음': 'joh', '요': 'joh',
+  '사도행전': 'act', '행': 'act',
+  '로마서': 'rom', '롬': 'rom',
+  '고린도전서': '1co', '고전': '1co',
+  '고린도후서': '2co', '고후': '2co',
+  '갈라디아서': 'gal', '갈': 'gal',
+  '에베소서': 'eph', '앱': 'eph',
+  '빌립보서': 'phi', '빌': 'phi',
+  '골로새서': 'col', '골': 'col',
+  '데살로니가전서': '1th', '살전': '1th',
+  '데살로니가후서': '2th', '살후': '2th',
+  '디모데전서': '1ti', '딤전': '1ti',
+  '디모데후서': '2ti', '딤후': '2ti',
+  '디도서': 'tit', '딛': 'tit',
+  '빌레몬서': 'phm', '몬': 'phm',
+  '히브리서': 'heb', '히': 'heb',
+  '야고보서': 'jam', '야': 'jam',
+  '베드로전서': '1pe', '벧전': '1pe',
+  '베드로후서': '2pe', '벧후': '2pe',
+  '요한1서': '1jo', '요일': '1jo',
+  '요한2서': '2jo', '요이': '2jo',
+  '요한3서': '3jo', '요삼': '3jo',
+  '유다서': 'jud', '유': 'jud',
+  '요한계시록': 'rev', '계': 'rev',
+};
+
+async function loadBibleData() {
+  if (bibleData) return bibleData;
+  try {
+    const res = await fetch('/data/bible.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    bibleData = await res.json();
+    return bibleData;
+  } catch (e) {
+    console.error('Bible load fail:', e);
+    // Retry once
+    try {
+      console.log('Retrying bible load...');
+      const res2 = await fetch('/data/bible.json?retry=1');
+      bibleData = await res2.json();
+      return bibleData;
+    } catch (e2) {
+      console.error('Retry failed:', e2);
+      return null;
+    }
+  }
+}
+
 // 아바타 이모지 목록
 const AVATAR_EMOJIS = ['😊', '😁', '🤗', '😎', '🥰', '😇', '🤓', '😋', '🙏', '✨', '🌟', '⭐', '💫', '🔥', '❤️', '💙', '💚', '💛', '💜', '🧡'];
 
 // 로컬스토리지에서 사용자 정보 불러오기
-function loadUser() {
+async function loadUser() {
   const stored = localStorage.getItem('harash_user');
   if (stored) {
     currentUser = JSON.parse(stored);
-    showMapScreen();
+
+    // 성경 진도표 로드 (필수)
+    // MapScreen이나 ReadingScreen 모두 필요함
+    await fetchBiblePlan();
+
+    // 저장된 읽기 화면 상태 확인 (새로고침 복구)
+    const lastDay = localStorage.getItem('harash_last_reading_day');
+    if (lastDay) {
+      showReadingScreen(parseInt(lastDay));
+    } else {
+      showMapScreen();
+    }
   } else {
     showLoginScreen();
+  }
+}
+
+// 성경 진도표 로드 함수 분리/추가
+async function fetchBiblePlan() {
+  if (biblePlan.length > 0) return;
+  try {
+    const res = await fetch('/api/bible-plan');
+    if (res.ok) {
+      biblePlan = await res.json();
+    }
+  } catch (e) {
+    console.error("Failed to load bible plan", e);
   }
 }
 
@@ -31,28 +155,30 @@ function showLoginScreen() {
         </div>
         
         <form id="loginForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+         <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
             <input 
-              type="email" 
-              id="email" 
+              type="tel"
+              id="phone"
               required
-              value="test1@example.com"
+              placeholder="01012345678"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+            <div class="text-xs text-gray-400 mt-1">하이픈 없이 입력</div>
+          </div>
+  
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">PIN</label>
+            <input 
+              type="password"
+              id="pin"
+              required
+              inputmode="numeric"
+              maxlength="6"
               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
           </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
-            <input 
-              type="password" 
-              id="password" 
-              required
-              value="test1234"
-              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-          </div>
-          
+  
           <button 
             type="submit"
             class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
@@ -60,30 +186,137 @@ function showLoginScreen() {
             로그인
           </button>
         </form>
+        
+        <div class="mt-6 text-center border-t pt-6">
+          <p class="text-gray-600 mb-2">아직 계정이 없으신가요?</p>
+          <button 
+            onclick="showRegisterScreen()"
+            class="text-purple-600 font-semibold hover:text-purple-800 transition-colors"
+          >
+            회원가입하기
+          </button>
+        </div>
+
       </div>
     </div>
   `;
-  
+
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
 }
 
 // 로그인 처리
 async function handleLogin(e) {
   e.preventDefault();
-  
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  
+
+  const phone = document.getElementById('phone').value;
+  const pin = document.getElementById('pin').value;
+
   try {
-    const response = await axios.post('/api/login', { email, password });
-    
+    const response = await axios.post('/api/login', { phone, pin });
+
     if (response.data.success) {
       currentUser = response.data.user;
       localStorage.setItem('harash_user', JSON.stringify(currentUser));
       showMapScreen();
     }
   } catch (error) {
-    alert('로그인에 실패했습니다.');
+    alert('로그인에 실패했습니다. (휴대폰/PIN 확인)');
+  }
+}
+
+// 회원가입 화면
+function showRegisterScreen() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="min-h-screen gradient-bg flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+          <h1 class="text-2xl font-bold text-gray-800 mb-2">회원가입</h1>
+          <p class="text-gray-600">하라쉬 성경읽기에 오신 것을 환영합니다.</p>
+        </div>
+        
+        <form id="registerForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">이름 (실명)</label>
+            <input 
+              type="text"
+              id="regName"
+              required
+              placeholder="예: 홍길동"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
+            <input 
+              type="tel"
+              id="regPhone"
+              required
+              placeholder="01012345678"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+            <div class="text-xs text-gray-400 mt-1">하이픈 없이 입력해주세요</div>
+          </div>
+  
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">PIN 설정 (6자리 숫자)</label>
+            <input 
+              type="password"
+              id="regPin"
+              required
+              inputmode="numeric"
+              minlength="4"
+              maxlength="6"
+              placeholder="****"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+            <div class="text-xs text-gray-400 mt-1">로그인할 때 사용할 비밀번호입니다</div>
+          </div>
+  
+          <button 
+            type="submit"
+            class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all mt-4"
+          >
+            가입하기
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <button onclick="showLoginScreen()" class="text-sm text-gray-500 hover:text-gray-700">
+            이미 계정이 있으신가요? 로그인
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('registerForm').addEventListener('submit', handleRegister);
+}
+
+// 회원가입 처리
+async function handleRegister(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('regName').value;
+  const phone = document.getElementById('regPhone').value;
+  const pin = document.getElementById('regPin').value;
+
+  if (pin.length < 4) {
+    alert('PIN 번호는 4자리 이상으로 설정해주세요.');
+    return;
+  }
+
+  try {
+    const response = await axios.post('/api/register', { name, phone, pin });
+
+    if (response.data.success) {
+      alert('회원가입이 완료되었습니다! 설정한 PIN으로 로그인해주세요.');
+      showLoginScreen();
+    }
+  } catch (error) {
+    const msg = error.response?.data?.error || '회원가입에 실패했습니다.';
+    alert(msg);
   }
 }
 
@@ -96,8 +329,11 @@ function logout() {
 
 // 가로 맵 화면
 async function showMapScreen() {
+  // 읽기 화면 상태 해제 (필수: 이 코드가 없으면 새로고침 시 계속 읽기화면으로 돌아감)
+  localStorage.removeItem('harash_last_reading_day');
+
   const app = document.getElementById('app');
-  
+
   // 데이터 로드
   const [userInfo, planData, usersData, settingsData] = await Promise.all([
     axios.get('/api/user/' + currentUser.id),
@@ -105,15 +341,15 @@ async function showMapScreen() {
     axios.get('/api/progress/all'),
     axios.get('/api/admin/settings')
   ]);
-  
+
   currentUser = { ...currentUser, ...userInfo.data };
   biblePlan = planData.data;
   allUsers = usersData.data;
   adminSettings = settingsData.data;
-  
+
   const isAdmin = ['senior_pastor', 'associate_pastor', 'minister'].includes(currentUser.role);
   const isLeader = ['team_leader', 'deputy_leader'].includes(currentUser.role);
-  
+
   app.innerHTML = `
     <div class="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
       <!-- 상단 헤더 -->
@@ -149,92 +385,196 @@ async function showMapScreen() {
       </div>
       
       <!-- 가로 스크롤 맵 -->
-      <div class="py-8 overflow-x-auto">
-        <div class="inline-flex items-start space-x-8 px-8 min-w-full">
+      <div class="py-10 overflow-x-auto scrollbar-hide">
+        <div class="inline-flex items-start space-x-0 px-10 min-w-full justify-center">
           ${renderHorizontalMap()}
+        </div>
+      </div>
+
+      <!-- 하단 교인 현황 리스트 -->
+      <div class="max-w-4xl mx-auto px-6 pb-20">
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+          <div class="p-6 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-purple-900">
+              <i class="fas fa-list-ol mr-2"></i>우리 교회 말씀 대장정
+            </h3>
+            <span class="text-sm text-purple-600 font-medium">실시간 현황</span>
+          </div>
+          <div class="divide-y divide-gray-100">
+            ${renderMemberRanking()}
+          </div>
         </div>
       </div>
     </div>
   `;
 }
 
-// 가로 맵 렌더링 (왼쪽→오른쪽)
+// 가로 맵 렌더링 (심플 버전 - 아바타 제거)
 function renderHorizontalMap() {
   let html = '';
-  
-  biblePlan.forEach((day, index) => {
+
+  // 날짜 필터링 (오늘 기준 +/- 3일)
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  let centerIdx = biblePlan.findIndex(d => d.date === todayStr);
+  if (centerIdx === -1) {
+    // 오늘 날짜가 없으면(주말 등), 가장 최근의 과거 유효 날짜를 기준으로 보여줌
+    const nextIdx = biblePlan.findIndex(d => d.date > todayStr);
+    if (nextIdx > 0) {
+      centerIdx = nextIdx - 1;
+    } else if (nextIdx === 0) {
+      centerIdx = 0;
+    } else {
+      centerIdx = biblePlan.length - 1;
+    }
+  }
+
+  const startIdx = Math.max(0, centerIdx - 3);
+  const endIdx = Math.min(biblePlan.length, centerIdx + 4);
+
+  const viewPlan = biblePlan.slice(startIdx, endIdx);
+
+  if (viewPlan.length === 0 && biblePlan.length > 0) {
+    // Fallback
+    viewPlan.push(...biblePlan.slice(0, 7));
+  }
+
+  if (viewPlan.length === 0) {
+    html = '<div class="w-full text-center p-4 text-gray-400">표시할 일정이 없습니다.</div>';
+  }
+
+  viewPlan.forEach((day, index) => {
     const dayNumber = day.day_number;
     const userProgress = currentUser.total_days_read;
-    
+
     const isCompleted = dayNumber <= userProgress;
     const isCurrent = dayNumber === userProgress + 1;
-    const isLocked = dayNumber > userProgress + 1;
-    
-    // 이 노드에 있는 사용자들
-    const usersHere = allUsers.filter(u => u.total_days_read + 1 === dayNumber || (isCompleted && u.total_days_read === dayNumber));
-    
+
+    // 날짜 기반 잠금 해제 (오늘 날짜보다 이전이거나 같으면 열림)
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const isUnlockedByDate = day.date <= todayStr;
+
+    const isLocked = !isCompleted && !isCurrent && !isUnlockedByDate;
+
     // 노드 스타일
-    let nodeClass = 'bg-gray-300 text-gray-500 border-4 border-gray-400';
+    let nodeClass = 'bg-gray-100 text-gray-400 border-2 border-gray-300';
     let icon = '🔒';
     let glow = '';
-    
+    let scale = 'scale-100';
+
     if (isCompleted) {
-      nodeClass = 'bg-green-500 text-white border-4 border-green-600 shadow-xl';
-      icon = '✓';
+      nodeClass = 'bg-green-100 text-green-600 border-2 border-green-500';
+      icon = '<i class="fas fa-check"></i>';
     } else if (isCurrent) {
-      nodeClass = 'bg-purple-600 text-white border-4 border-purple-800 shadow-2xl';
-      icon = '📖';
-      glow = 'animate-pulse shadow-purple-500/50';
+      nodeClass = 'bg-white text-purple-600 border-4 border-purple-600 shadow-xl';
+      icon = dayNumber;
+      glow = 'ring-4 ring-purple-100';
+      scale = 'scale-110';
+    } else if (isUnlockedByDate) {
+      // 날짜는 지났으나 아직 안 읽은(건너뛴) 상태
+      nodeClass = 'bg-white text-gray-700 border-2 border-gray-400 border-dashed';
+      icon = dayNumber;
+    } else {
+      // Future nodes
+      icon = dayNumber;
     }
-    
+
+    // 날짜 포맷팅 (YYYY-MM-DD -> M/D(요일))
+    const dateParts = day.date.split('-');
+    const dateStr = `${parseInt(dateParts[1])}/${parseInt(dateParts[2])}(${day.week_day})`;
+
     html += `
-      <div class="flex flex-col items-center relative">
-        <!-- 날짜 레이블 -->
-        <div class="text-center mb-4">
-          <div class="text-xs text-gray-500 font-semibold">${day.week_day}</div>
-          <div class="text-sm text-gray-600">${day.day_number}일차</div>
+      <div class="flex flex-col items-center relative group z-10 w-28 shrink-0">
+        <!-- 상단 날짜 -->
+        <div class="mb-3 text-center h-12 flex flex-col justify-end transition-all ${isCurrent ? 'opacity-100 -translate-y-1' : 'opacity-60 group-hover:opacity-100'}">
+          <div class="text-xs font-bold text-gray-500 mb-1">${dateStr}</div>
+          <div class="text-[10px] text-gray-400 border border-gray-200 rounded-full px-2 py-0.5 bg-white">
+            ${day.day_number}일차
+          </div>
         </div>
         
-        <!-- 노드 -->
+        <!-- 원형 노드 -->
         <button 
-          onclick="${isCurrent || isCompleted ? 'showReadingScreen(' + dayNumber + ')' : 'void(0)'}"
-          class="relative w-24 h-24 rounded-full ${nodeClass} ${glow} flex flex-col items-center justify-center transition-all transform hover:scale-110 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}"
-          ${isLocked ? 'disabled' : ''}
+          onclick="${!isLocked ? 'showReadingScreen(' + dayNumber + ')' : 'void(0)'}"
+          class="relative w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold transition-all duration-300 ${nodeClass} ${glow} ${scale} ${isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg'} z-20"
         >
-          <div class="text-4xl">${icon}</div>
+          ${icon}
         </button>
         
-        <!-- 말씀 정보 -->
-        <div class="mt-4 text-center">
-          <div class="font-bold text-gray-800 text-sm">${day.book_name}</div>
-          <div class="text-xs text-purple-600">${day.start_chapter}-${day.end_chapter}장</div>
+        <!-- 하단 책 제목 -->
+        <div class="mt-3 text-center w-24">
+          <div class="text-xs font-bold text-gray-700 truncate">${day.book_name}</div>
+          <div class="text-[10px] text-gray-500">${day.start_chapter}-${day.end_chapter}</div>
         </div>
         
-        <!-- 사용자 아바타들 (위에 표시) -->
-        ${usersHere.length > 0 ? `
-          <div class="absolute -top-20 flex flex-wrap justify-center gap-2 w-32">
-            ${usersHere.slice(0, 6).map(user => {
-              const isMe = user.id === currentUser.id;
-              return `
-                <div class="relative group">
-                  <div class="w-10 h-10 rounded-full ${isMe ? 'ring-2 ring-purple-600' : ''} flex items-center justify-center text-2xl bg-white shadow-lg cursor-pointer hover:scale-125 transition-transform" title="${user.name}">
-                    ${user.avatar_url ? '<img src="' + user.avatar_url + '" class="w-full h-full rounded-full object-cover">' : user.avatar_emoji || '😊'}
-                  </div>
-                  ${isCompleted ? '<div class="absolute -top-2 -right-2 cursor-pointer" onclick="showEncouragementDialog(' + user.id + ', ' + dayNumber + ')">💬</div>' : ''}
-                </div>
-              `;
-            }).join('')}
-            ${usersHere.length > 6 ? '<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600">+' + (usersHere.length - 6) + '</div>' : ''}
+        <!-- 연결선 -->
+        ${index < viewPlan.length - 1 ? `
+          <div class="absolute top-[5.8rem] left-[50%] w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2">
+            <div class="h-full bg-green-400 transition-all duration-1000" style="width: ${isCompleted ? '100%' : '0%'}"></div>
           </div>
         ` : ''}
-        
-        <!-- 연결선 -->
-        ${index < biblePlan.length - 1 ? '<div class="absolute left-full top-12 w-8 h-1 bg-gray-300"></div>' : ''}
       </div>
     `;
   });
-  
+
   return html;
+}
+
+// 교인 랭킹/현황 리스트 렌더링
+function renderMemberRanking() {
+  // 진행도 순 정렬
+  const sortedUsers = [...allUsers].sort((a, b) => b.total_days_read - a.total_days_read || a.name.localeCompare(b.name));
+
+  return sortedUsers.map((user, index) => {
+    const isMe = user.id === currentUser.id;
+    const progressPercent = Math.min(100, Math.round((user.total_days_read / biblePlan.length) * 100));
+
+    // 칭찬하기 버튼 (나보다 진도가 같거나 높은 사람에게? 혹은 모두에게?)
+    // 본인이 아니면 칭찬하기 버튼 노출
+    const showEncourage = !isMe;
+
+    // 진행도 (장수) 계산
+    const completedPlan = biblePlan.slice(0, user.total_days_read);
+    const totalChapters = completedPlan.reduce((sum, day) => sum + (day.end_chapter - day.start_chapter + 1), 0);
+
+    return `
+      <div class="flex items-center px-6 py-4 hover:bg-gray-50 transition-colors ${isMe ? 'bg-purple-50' : ''}">
+        <div class="w-8 text-center text-gray-400 font-bold mr-4 text-sm">${index + 1}</div>
+        
+        <div class="relative mr-4">
+          <div class="w-12 h-12 rounded-full bg-white border-2 ${isMe ? 'border-purple-400' : 'border-gray-200'} flex items-center justify-center text-2xl shadow-sm overflow-hidden">
+            ${user.avatar_url ? `<img src="${user.avatar_url}" class="w-full h-full object-cover">` : (user.avatar_emoji || '😊')}
+          </div>
+          ${index < 3 ? '<div class="absolute -top-1 -right-1 text-lg">👑</div>' : ''}
+        </div>
+        
+        <div class="flex-1 min-w-0 mr-4">
+          <div class="flex items-center mb-1">
+            <span class="font-bold text-gray-800 mr-2 truncate">${user.name}</span>
+            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">${getRoleKorean(user.role)}</span>
+          </div>
+          <div class="flex items-center text-xs text-gray-500 space-x-2">
+            <span>${user.streak_count}일 연속 🔥</span>
+            <span>·</span>
+            <span>${user.total_days_read}일차 완료</span>
+          </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+          ${showEncourage ? `
+            <button onclick="showEncouragementDialog(${user.id}, ${user.total_days_read})" class="text-gray-400 hover:text-purple-500 transition-colors p-2">
+              <i class="far fa-comment-dots text-xl"></i>
+            </button>
+          ` : ''}
+          <div class="text-right w-16">
+            <div class="text-sm font-bold text-purple-600">${totalChapters}장</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // 역할 한글 변환
@@ -253,7 +593,7 @@ function getRoleKorean(role) {
 // 아바타 선택기
 function showAvatarSelector() {
   const app = document.getElementById('app');
-  
+
   let emojisHTML = '';
   AVATAR_EMOJIS.forEach(emoji => {
     const isSelected = currentUser.avatar_emoji === emoji;
@@ -266,7 +606,7 @@ function showAvatarSelector() {
       </button>
     `;
   });
-  
+
   app.innerHTML = `
     <div class="min-h-screen bg-gray-50">
       <div class="bg-purple-600 text-white p-6">
@@ -303,10 +643,10 @@ async function selectAvatar(emoji) {
       avatar_emoji: emoji,
       avatar_url: null
     });
-    
+
     currentUser.avatar_emoji = emoji;
     localStorage.setItem('harash_user', JSON.stringify(currentUser));
-    
+
     showMapScreen();
   } catch (error) {
     alert('아바타 변경에 실패했습니다.');
@@ -316,20 +656,20 @@ async function selectAvatar(emoji) {
 // 풍선 댓글 다이얼로그
 function showEncouragementDialog(toUserId, dayNumber) {
   const EMOJIS = ['❤️', '👍', '🎉', '💪', '🙏', '✨', '🔥', '⭐'];
-  
+
   let html = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">';
   html += '<div class="bg-white rounded-2xl p-6 max-w-sm" onclick="event.stopPropagation()">';
   html += '<h3 class="text-xl font-bold text-gray-800 mb-4">응원하기</h3>';
   html += '<div class="grid grid-cols-4 gap-3 mb-4">';
-  
+
   EMOJIS.forEach(emoji => {
     html += '<button onclick="sendEncouragement(' + toUserId + ', ' + dayNumber + ', \'' + emoji + '\')" class="text-4xl hover:scale-125 transition-transform">' + emoji + '</button>';
   });
-  
+
   html += '</div>';
   html += '<button onclick="this.closest(\'.fixed\').remove()" class="w-full bg-gray-300 text-gray-700 py-2 rounded-xl font-semibold">취소</button>';
   html += '</div></div>';
-  
+
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
@@ -343,7 +683,7 @@ async function sendEncouragement(toUserId, dayNumber, emoji) {
       reading_log_id: 0,
       emoji: emoji
     });
-    
+
     document.querySelector('.fixed')?.remove();
     alert('응원을 보냈습니다! ' + emoji);
   } catch (error) {
@@ -356,6 +696,7 @@ window.addEventListener('DOMContentLoaded', loadUser);
 
 // 전역 함수
 window.logout = logout;
+window.showRegisterScreen = showRegisterScreen;
 window.showMapScreen = showMapScreen;
 window.showAvatarSelector = showAvatarSelector;
 window.selectAvatar = selectAvatar;
@@ -369,94 +710,700 @@ window.saveAdminSettings = saveAdminSettings;
 window.showTeamPanel = showTeamPanel;
 window.syncGoogleSheets = syncGoogleSheets;
 
-// 말씀 읽기 화면 (Google Sheets에서 텍스트 가져오기)
+// 말씀 읽기 화면 (클라이언트 사이드 렌더링)
 async function showReadingScreen(dayNumber) {
+  // 상태 저장 (새로고침 시 복구용)
+  localStorage.setItem('harash_last_reading_day', dayNumber);
+
   const app = document.getElementById('app');
-  
+
   const plan = biblePlan.find(p => p.day_number === dayNumber);
   if (!plan) return;
-  
+  window.currentPlan = plan; // Expose for TTS
+
+  // 로딩 표시
   app.innerHTML = `
-    <div class="min-h-screen bg-gray-50">
-      <div class="bg-purple-600 text-white sticky top-0 z-50 shadow-lg">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <button onclick="showMapScreen()" class="text-white hover:bg-purple-700 px-3 py-2 rounded-lg">
-            <i class="fas fa-arrow-left mr-2"></i>돌아가기
-          </button>
-          <div class="text-center flex-1">
-            <div class="font-bold">${plan.book_name} ${plan.start_chapter}-${plan.end_chapter}장</div>
-            <div class="text-sm text-purple-200">${plan.week_day} · ${plan.day_number}일차</div>
-          </div>
-          <button onclick="playAudio()" class="text-white hover:bg-purple-700 px-3 py-2 rounded-lg">
-            <i class="fas fa-play"></i>
-          </button>
-        </div>
-      </div>
-      
-      <div class="max-w-4xl mx-auto px-4 py-8">
-        ${plan.scripture_text ? `
-          <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
-            <div class="prose prose-lg max-w-none whitespace-pre-wrap leading-relaxed text-gray-800">
-              ${plan.scripture_text}
-            </div>
-          </div>
-        ` : `
-          <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-xl mb-8">
-            <p class="text-yellow-800">
-              <i class="fas fa-exclamation-triangle mr-2"></i>
-              <strong>관리자님께:</strong> Google Sheets에 오늘의 말씀 텍스트를 추가해주세요.
-            </p>
-          </div>
-        `}
-        
-        <div class="sticky bottom-4">
-          <button 
-            onclick="completeReading(${dayNumber})"
-            class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all"
-          >
-            <i class="fas fa-check mr-2"></i>
-            완독 확인
-          </button>
-        </div>
-      </div>
+    <div class="min-h-screen bg-purple-50 flex flex-col items-center justify-center">
+      <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600 mb-4"></div>
+      <p class="text-gray-600 font-medium">말씀을 불러오는 중입니다...</p>
+      <p class="text-sm text-gray-500 mt-2">${plan.book_name} ${plan.start_chapter}장</p>
+      <p class="text-xs text-gray-400 mt-1">(최초 로딩 시 시간이 조금 걸릴 수 있습니다)</p>
     </div>
   `;
-  
-  window.scrollTo(0, 0);
+
+  try {
+    // 1. Bible Data 로드
+    let bible = await loadBibleData();
+    let html = '';
+
+    // 2. 책 코드 및 약어 찾기
+    const bookCode = BIBLE_BOOK_CODES[plan.book_name];
+    let bookAbbr = null;
+    let audio_url = '';
+    let source_url = '';
+
+    if (bible && bookCode) {
+      // 약어 찾기 (짧은 것 우선: '창' vs '창세기')
+      bookAbbr = Object.entries(BIBLE_BOOK_CODES)
+        .filter(([_, code]) => code === bookCode)
+        .map(([key, _]) => key)
+        .sort((a, b) => a.length - b.length)[0];
+
+      // 3. 본문 파싱
+      const verses = [];
+      let verseNum = 1;
+
+      const bookName = plan.book_name;
+
+      console.log('Parsing Bible:', { bookAbbr, bookName, chapter: plan.start_chapter });
+
+      while (true) {
+        // 시도 1: 약어 + 장:절 (예: 창1:1)
+        let key1 = `${bookAbbr}${plan.start_chapter}:${verseNum}`;
+        // 시도 2: 전체이름 + 장:절 (예: 창세기1:1)
+        let key2 = `${bookName}${plan.start_chapter}:${verseNum}`;
+
+        let text = bible[key1] || bible[key2];
+
+        if (!text) break;
+        verses.push(`<p class="mb-1"><b class="text-purple-700 font-bold mr-1">${verseNum}.</b>${text}</p>`);
+        verseNum++;
+      }
+
+      if (verses.length > 0) {
+        html = verses.join('\n');
+      } else {
+        console.warn(`No verses found. Plan:`, plan);
+        // Fallback: If no text found, maybe show a hint or the raw plan data for debugging
+        if (!bookCode) {
+          html = `<div class="p-4 bg-red-50 text-red-600 rounded">
+                <p class="font-bold">성경 책 이름을 찾을 수 없습니다.</p>
+                <p>데이터 값: ${plan.book_name}</p>
+                <p>동기화가 잘못되었을 수 있습니다. 관리자 설정에서 '진도표 동기화'를 다시 진행해주세요.</p>
+             </div>`;
+        }
+      }
+
+      audio_url = `https://www.bskorea.or.kr/bible/listen.php?version=GAE&book=${bookCode}&chap=${plan.start_chapter}`;
+      source_url = `https://www.bskorea.or.kr/bible/korbibReadpage.php?version=GAE&book=${bookCode}&chap=${plan.start_chapter}`;
+    }
+
+    app.innerHTML = `
+      <div class="min-h-screen bg-gray-50 flex flex-col items-center">
+        <!-- Header -->
+        <div class="w-full bg-purple-600 text-white sticky top-0 z-50 shadow-lg" id="readingHeader">
+          <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <button onclick="showMapScreen()" class="text-white hover:bg-purple-700 px-3 py-2 rounded-lg transition-colors">
+              <i class="fas fa-arrow-left mr-2"></i>뒤로
+            </button>
+            
+            <div class="text-center flex-1 mx-2">
+              <div class="font-bold text-lg leading-tight truncate">${plan.week_day} · ${plan.book_name} ${plan.start_chapter}-${plan.end_chapter}장</div>
+            </div>
+
+            <!-- Settings Button -->
+            <button onclick="toggleSettings()" class="text-white hover:bg-purple-700 px-3 py-2 rounded-lg transition-colors" title="화면 설정">
+              <i class="fas fa-font text-xl"></i>
+            </button>
+            
+            <!-- Settings Panel -->
+            <div id="settingsPanel" class="hidden absolute top-full right-4 mt-2 w-72 bg-white rounded-2xl shadow-2xl p-5 text-gray-800 border-2 border-purple-100 z-50 animate-fade-in-down">
+              <h4 class="font-bold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-sliders-h mr-2 text-purple-600"></i>화면 설정
+              </h4>
+              
+              <div class="mb-5">
+                <div class="flex justify-between text-sm text-gray-600 mb-2 font-medium">
+                  <span>글꼴</span>
+                  <span id="fontFamilyDisplay" class="text-xs bg-gray-100 px-2 py-0.5 rounded">기본</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button onclick="updateFontFamily('Noto Sans KR')" class="font-btn px-2 py-2 rounded-lg text-xs border border-gray-200 hover:border-purple-500 font-sans transition-colors">고딕 (기본)</button>
+                  <button onclick="updateFontFamily('Noto Serif KR')" class="font-btn px-2 py-2 rounded-lg text-xs border border-gray-200 hover:border-purple-500 font-serif transition-colors" style="font-family: 'Noto Serif KR', serif">명조</button>
+                  <button onclick="updateFontFamily('Gowun Batang')" class="font-btn px-2 py-2 rounded-lg text-xs border border-gray-200 hover:border-purple-500 transition-colors" style="font-family: 'Gowun Batang', serif">고운바탕</button>
+                  <button onclick="updateFontFamily('Gowun Dodum')" class="font-btn px-2 py-2 rounded-lg text-xs border border-gray-200 hover:border-purple-500 transition-colors" style="font-family: 'Gowun Dodum', sans-serif">고운돋움</button>
+                </div>
+              </div>
+
+              <div class="mb-5">
+                <div class="flex justify-between text-sm text-gray-600 mb-2 font-medium">
+                  <span>글자 크기</span>
+                  <span id="fontSizeDisplay">20px</span>
+                </div>
+                <input type="range" min="16" max="32" value="20" class="w-full accent-purple-600 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer" oninput="updateFontSize(this.value)">
+              </div>
+              
+              <div>
+                <div class="flex justify-between text-sm text-gray-600 mb-2 font-medium">
+                  <span>줄 간격</span>
+                  <span id="lineHeightDisplay">1.8</span>
+                </div>
+                <input type="range" min="1.4" max="2.4" step="0.1" value="1.8" class="w-full accent-purple-600 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer" oninput="updateLineHeight(this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="w-full max-w-4xl px-4 py-6 flex-1 flex flex-col">
+          <div class="bg-white rounded-2xl shadow-lg p-6 md:p-10 mb-8 transition-all relative overflow-hidden">
+            
+            <!-- TTS Audio Player -->
+            <div class="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-5 mb-8 border border-purple-100 shadow-sm relative overflow-hidden">
+               <div class="flex items-center justify-between relative z-10">
+                <div class="flex items-center space-x-4">
+                  <button id="ttsPlayBtn" onclick="toggleTTS()" class="w-14 h-14 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-purple-700 hover:scale-105 active:scale-95 transition-all focus:outline-none ring-4 ring-purple-100">
+                    <i class="fas fa-play text-2xl ml-1"></i>
+                  </button>
+                  <div>
+                    <span class="block font-bold text-gray-800 text-lg">듣기 모드</span>
+                    <span id="ttsStatus" class="text-xs text-purple-600 font-medium bg-purple-100 px-2 py-0.5 rounded-full">준비됨</span>
+                  </div>
+                </div>
+                
+                 <div class="flex flex-col items-end gap-3">
+                    <!-- Speed -->
+                    <div class="flex flex-col items-end">
+                       <span class="text-xs text-gray-500 font-medium mb-1">속도</span>
+                       <div class="flex bg-white rounded-xl shadow-sm border border-purple-100 p-1">
+                         <button onclick="setTTSSpeed(0.8)" class="speed-btn px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-purple-50 transition-colors" data-speed="0.8">0.8</button>
+                         <button onclick="setTTSSpeed(1.0)" class="speed-btn px-2 py-1 text-xs rounded-lg bg-purple-100 text-purple-700 font-bold shadow-sm transition-colors" data-speed="1.0">1.0</button>
+                         <button onclick="setTTSSpeed(1.2)" class="speed-btn px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-purple-50 transition-colors" data-speed="1.2">1.2</button>
+                         <button onclick="setTTSSpeed(1.5)" class="speed-btn px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-purple-50 transition-colors" data-speed="1.5">1.5</button>
+                       </div>
+                    </div>
+                    
+                    <!-- Voice -->
+                    <div class="flex flex-col items-end">
+                       <div class="flex items-center gap-1 mb-1">
+                           <span class="text-xs text-gray-500 font-medium">목소리</span>
+                           <button onclick="showVoiceHelp()" class="text-gray-400 hover:text-purple-600 transition-colors" title="목소리 추가 방법"><i class="fas fa-question-circle text-xs"></i></button>
+                       </div>
+                       <div class="relative">
+                           <select id="ttsVoiceSelect" onchange="changeTTSVoice(this.value)" class="text-xs border border-purple-200 rounded-lg py-1.5 pl-2 pr-6 bg-white outline-none focus:ring-2 focus:ring-purple-100 w-36 shadow-sm text-gray-700 cursor-pointer">
+                               <option value="auto">자동 (추천)</option>
+                               <option value="" disabled>불러오는 중...</option>
+                           </select>
+                           <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                             <i class="fas fa-chevron-down text-[10px] text-gray-400"></i>
+                           </div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            </div>
+
+            <!-- Bible Text -->
+            <div id="bibleTextContainer" class="prose prose-lg max-w-none whitespace-pre-wrap text-gray-800 transition-all font-serif">
+              ${html ? html : `
+                <div class="text-center py-10">
+                  <p class="text-gray-600 mb-4 font-medium">성경 본문을 불러오지 못했습니다.</p>
+                  <a href="${source_url}" target="_blank" class="inline-flex items-center bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors shadow-sm">
+                    <i class="fas fa-external-link-alt mr-2 text-sm"></i>대한성서공회에서 읽기
+                  </a>
+                </div>
+              `}
+            </div>
+            
+            <!-- Complete Button -->
+            <div class="mt-12 flex justify-center pb-8 border-t border-gray-100 pt-8">
+              <button onclick="completeReading(${plan.day_number})" class="group bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-10 py-4 rounded-2xl text-xl font-bold hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center">
+                <span class="mr-2">📖</span> 읽기 완료
+                <i class="fas fa-check ml-2 text-sm opacity-50 group-hover:opacity-100 transition-opacity"></i>
+              </button>
+            </div>
+
+            <div class="text-center mt-4">
+               <a href="${source_url}" target="_blank" class="inline-flex items-center text-xs text-gray-400 hover:text-purple-600 transition-colors">
+                <i class="fas fa-external-link-alt mr-1"></i> 대한성서공회 원문 보기
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+
+    // --- Logic Implementation ---
+
+    // 1. Settings Logic
+    const savedFontSize = localStorage.getItem('harash_fontSize') || '20';
+    const savedLineHeight = localStorage.getItem('harash_lineHeight') || '1.8';
+    const savedFontFamily = localStorage.getItem('harash_fontFamily') || 'Noto Sans KR';
+
+    // UI update
+    setTimeout(() => {
+      const fsInput = document.querySelector('input[oninput="updateFontSize(this.value)"]');
+      const lhInput = document.querySelector('input[oninput="updateLineHeight(this.value)"]');
+      if (fsInput) fsInput.value = savedFontSize;
+      if (lhInput) lhInput.value = savedLineHeight;
+      if (window.updateFontFamily) window.updateFontFamily(savedFontFamily, true); // true = skip save, just link UI
+    }, 100);
+
+    window.updateFontSize = function (size) {
+      const el = document.getElementById('bibleTextContainer');
+      const disp = document.getElementById('fontSizeDisplay');
+      if (el) el.style.fontSize = size + 'px';
+      if (disp) disp.innerText = size + 'px';
+      localStorage.setItem('harash_fontSize', size);
+    };
+
+    window.updateLineHeight = function (height) {
+      const el = document.getElementById('bibleTextContainer');
+      const disp = document.getElementById('lineHeightDisplay');
+      if (el) el.style.lineHeight = height;
+      if (disp) disp.innerText = height;
+      localStorage.setItem('harash_lineHeight', height);
+    };
+
+    window.updateFontFamily = function (font, skipSave) {
+      const el = document.getElementById('bibleTextContainer');
+      const disp = document.getElementById('fontFamilyDisplay');
+
+      let family = "sans-serif";
+      if (font === 'Noto Serif KR' || font === 'Gowun Batang') family = "serif";
+
+      if (el) el.style.fontFamily = `"${font}", ${family}`;
+
+      // 버튼 UI 업데이트
+      const btns = document.querySelectorAll('.font-btn');
+      btns.forEach(btn => {
+        const btnFont = btn.getAttribute('onclick').match(/'(.*)'/)[1];
+        if (btnFont === font) {
+          btn.classList.add('bg-purple-100', 'text-purple-700', 'border-purple-500', 'font-bold');
+          btn.classList.remove('border-gray-200');
+          if (disp) disp.innerText = btn.innerText.replace(' (기본)', '');
+        } else {
+          btn.classList.remove('bg-purple-100', 'text-purple-700', 'border-purple-500', 'font-bold');
+          btn.classList.add('border-gray-200');
+        }
+      });
+
+      if (!skipSave) localStorage.setItem('harash_fontFamily', font);
+    };
+
+    // Apply initial styles
+    window.updateFontSize(savedFontSize);
+    window.updateLineHeight(savedLineHeight);
+    // FontFamily applied via setTimeout to ensure buttons exist
+
+    window.toggleSettings = function () {
+      const panel = document.getElementById('settingsPanel');
+      if (panel) panel.classList.toggle('hidden');
+    };
+
+    // 2. TTS Logic
+    let ttsUtterance = null;
+    let isPlaying = false;
+    let currentSpeed = 1.0;
+
+    const rawText = document.getElementById('bibleTextContainer').innerText;
+
+    let selectedVoiceURI = localStorage.getItem('tts_voice_uri') || 'auto';
+
+    // TTS 텍스트 정제 (절 번호 제거)
+    function cleanTextForTTS(text) {
+      // 문장 시작이나 줄바꿈 후 나오는 "숫자 + 점/공백" 패턴 제거
+      return text.replace(/(^|\n)\s*\d+\.?\s*/g, '$1');
+    }
+
+    // 최적의 한국어 목소리 찾기
+    // 최적의 한국어 목소리 찾기
+    function getBestKoreanVoice() {
+      const voices = window.speechSynthesis.getVoices();
+
+      // 사용자가 선택한 목소리가 있으면 우선 사용
+      if (selectedVoiceURI && selectedVoiceURI !== 'auto') {
+        const exact = voices.find(v => v.voiceURI === selectedVoiceURI);
+        if (exact) return exact;
+      }
+
+      // 우선순위 키워드 (Google -> Siri -> Premium -> Neural 등)
+      const keywords = ['Google', 'Siri', 'Premium', 'Neural', 'Yuna', 'Sora', 'Hyeji'];
+
+      for (const k of keywords) {
+        const v = voices.find(v => v.name.includes(k) && v.lang.includes('ko'));
+        if (v) return v;
+      }
+
+      return voices.find(v => v.lang.includes('ko'));
+    }
+
+    // OpenAI Audio Object (Reuse for Original TTS)
+    let ttsAudio = new Audio();
+
+    // [New] BSKorea Original Audio Handler
+    function handleOriginalTTS() {
+      if (isPlaying) {
+        ttsAudio.pause();
+        isPlaying = false;
+        updateTTSButton(false);
+        updateStatus('중지됨', 'gray');
+        return;
+      }
+
+      if (!currentPlan) {
+        alert("읽을 본문이 선택되지 않았습니다.");
+        return;
+      }
+
+      const bookName = currentPlan.book_name;
+      const chapter = currentPlan.start_chapter;
+
+      const bookCode = BIBLE_BOOK_CODES[bookName];
+      if (!bookCode) {
+        alert(`오디오를 찾을 수 없는 성경입니다: ${bookName}`);
+        return;
+      }
+
+      // URL Pattern: km003_gae_{book}_{chap}.mp3
+      const chapStr = String(chapter).padStart(3, '0');
+      // Note: URL is case-sensitive, codes in BIBLE_BOOK_CODES are lowercase (e.g. 'gen'), which matches
+      const bskoreaUrl = `https://www.bskorea.or.kr/voice/voice/gae/m/km003_gae_${bookCode}_${chapStr}.mp3`;
+
+      // Proxy URL to bypass CORS
+      const url = `/api/proxy/audio?url=${encodeURIComponent(bskoreaUrl)}`;
+
+      updateStatus('오디오 로딩 중...', 'active');
+      ttsAudio.src = url;
+      ttsAudio.playbackRate = currentSpeed;
+
+      ttsAudio.onloadeddata = () => {
+        updateStatus('성우 낭독 중...', 'active');
+        ttsAudio.play().catch(e => {
+          console.error("Play error:", e);
+          updateStatus('재생 오류', 'red');
+        });
+        isPlaying = true;
+        updateTTSButton(true);
+      };
+
+      ttsAudio.onerror = (e) => {
+        console.error("Audio Load Error", url, e);
+        updateStatus('오류', 'red');
+        alert("오디오 파일을 불러올 수 없습니다.");
+        isPlaying = false;
+        updateTTSButton(false);
+      };
+
+      ttsAudio.onended = () => {
+        isPlaying = false;
+        updateTTSButton(false);
+        updateStatus('완료', 'purple');
+      };
+    }
+
+    async function handleOpenAITTS() {
+      if (isPlaying) {
+        ttsAudio.pause();
+        isPlaying = false;
+        updateTTSButton(false);
+        updateStatus('중지됨', 'gray');
+        return;
+      }
+
+      const apiKey = localStorage.getItem('openai_api_key') || '';
+
+      updateStatus('AI 음성 생성 중...', 'active');
+      try {
+        const cleanText = cleanTextForTTS(rawText || '');
+        const voiceVal = openAIVoices.find(v => v.id === selectedVoiceURI)?.val || 'shimmer';
+
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: cleanText, voice: voiceVal, apiKey })
+        });
+
+        if (response.status === 401) {
+          updateStatus('인증 필요', 'red');
+          if (confirm("서버에 등록된 API Key가 없습니다.\n직접 키를 입력하시겠습니까?")) {
+            showApiKeyModal();
+          }
+          return;
+        }
+
+        if (!response.ok) throw new Error('TTS API Request Failed');
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        ttsAudio.src = url;
+        ttsAudio.playbackRate = currentSpeed;
+        ttsAudio.play();
+
+        ttsAudio.onended = () => {
+          isPlaying = false;
+          updateTTSButton(false);
+          updateStatus('완료', 'purple');
+        };
+
+        isPlaying = true;
+        updateTTSButton(true);
+        updateStatus('AI 읽는 중...', 'active');
+
+      } catch (e) {
+        console.error(e);
+        updateStatus('오류', 'red');
+        alert("음성 생성 실패: 잠시 후 다시 시도해주세요.");
+      }
+    }
+
+    window.toggleTTS = function () {
+      // 0. Original Mode (Default/Priority)
+      if (selectedVoiceURI === 'bskorea-original') {
+        handleOriginalTTS();
+        return;
+      }
+
+      // 1. OpenAI 모드 확인
+      if (selectedVoiceURI && selectedVoiceURI.startsWith('openai-')) {
+        handleOpenAITTS();
+        return;
+      }
+
+      // 2. 기존 시스템 TTS 로직
+      if ('speechSynthesis' in window) {
+        if (isPlaying) {
+          window.speechSynthesis.cancel();
+          isPlaying = false;
+          updateTTSButton(false);
+          updateStatus('중지됨', 'gray');
+        } else {
+          if (!ttsUtterance) {
+            // 절 번호를 제거한 텍스트 사용
+            const cleanText = cleanTextForTTS(rawText || '');
+            ttsUtterance = new SpeechSynthesisUtterance(cleanText);
+
+            // 목소리 설정
+            const bestVoice = getBestKoreanVoice();
+            if (bestVoice) {
+              ttsUtterance.voice = bestVoice;
+            }
+
+            ttsUtterance.lang = 'ko-KR';
+            ttsUtterance.rate = currentSpeed;
+
+            ttsUtterance.onend = function () {
+              isPlaying = false;
+              updateTTSButton(false);
+              updateStatus('완료', 'purple');
+              ttsUtterance = null;
+            };
+
+            ttsUtterance.onerror = function (e) {
+              console.error("TTS Error:", e);
+              isPlaying = false;
+              updateTTSButton(false);
+              updateStatus('오류', 'red');
+            };
+          }
+          window.speechSynthesis.speak(ttsUtterance);
+          isPlaying = true;
+          updateTTSButton(true);
+          updateStatus('읽는 중...', 'active');
+        }
+      } else {
+        alert("음성 읽기를 지원하지 않는 브라우저입니다.");
+      }
+    };
+
+    window.setTTSSpeed = function (speed) {
+      currentSpeed = speed;
+      // Audio Element 속도 조절
+      if (ttsAudio) {
+        try { ttsAudio.playbackRate = speed; } catch (e) { }
+      }
+      // System TTS 속도 조절 (Not supported dynamically in all browsers, but try)
+      if (ttsUtterance && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setTimeout(window.toggleTTS, 50);
+      }
+
+      const btns = document.querySelectorAll('.speed-btn');
+      btns.forEach(btn => {
+        const s = parseFloat(btn.getAttribute('data-speed'));
+        if (Math.abs(s - speed) < 0.1) {
+          btn.className = "speed-btn px-2 py-1 text-xs rounded-lg bg-purple-100 text-purple-700 font-bold shadow-sm transition-colors";
+        } else {
+          btn.className = "speed-btn px-2 py-1 text-xs rounded-lg text-gray-500 hover:bg-purple-50 transition-colors";
+        }
+      });
+
+      if (isPlaying) {
+        window.speechSynthesis.cancel();
+        ttsUtterance = null;
+        setTimeout(window.toggleTTS, 50);
+      }
+    };
+
+    const openAIVoices = [
+      { id: 'bskorea-original', name: 'Original (성우 낭독 - 무료)', val: 'original' }
+    ];
+
+    // 목소리 목록 로드 (OpenAI Only)
+    window.loadVoiceList = function () {
+      const select = document.getElementById('ttsVoiceSelect');
+      if (!select) return;
+
+      select.innerHTML = '';
+
+      openAIVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = v.name;
+        if (v.id === selectedVoiceURI) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      // Default to Original if not set or invalid
+      if (!selectedVoiceURI || (!selectedVoiceURI.startsWith('openai-') && selectedVoiceURI !== 'bskorea-original')) {
+        selectedVoiceURI = 'bskorea-original';
+        select.value = selectedVoiceURI;
+        localStorage.setItem('tts_voice_uri', selectedVoiceURI);
+      }
+
+      select.onchange = function () {
+        window.changeTTSVoice(this.value);
+      }
+    };
+
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = window.loadVoiceList;
+    }
+
+    window.changeTTSVoice = function (uri) {
+      selectedVoiceURI = uri;
+      localStorage.setItem('tts_voice_uri', uri);
+      if (isPlaying) {
+        window.speechSynthesis.cancel();
+        ttsUtterance = null;
+        setTimeout(window.toggleTTS, 100);
+      }
+    };
+
+    window.showVoiceHelp = function () {
+      const div = document.createElement('div');
+      div.id = 'voiceHelpModal';
+      div.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm animate-fade-in';
+      div.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative animate-slide-up max-h-[90vh] overflow-y-auto">
+                <button onclick="document.getElementById('voiceHelpModal').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl"><i class="fas fa-volume-up"></i></div>
+                    <h3 class="text-lg font-bold text-gray-800">목소리 설정 가이드</h3>
+                    <p class="text-sm text-gray-500 mt-1">더 자연스러운 목소리를 원하시나요?</p>
+                </div>
+                
+                <div class="space-y-6 text-sm text-gray-600">
+                    <!-- OpenAI Section -->
+                    <div class="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 rounded-xl p-4 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2">
+                             <div class="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded">AI 성우</div>
+                             <h4 class="font-bold text-indigo-900">OpenAI 초고화질 음성</h4>
+                        </div>
+                        <p class="mb-3 leading-relaxed text-indigo-800">
+                           사람과 구분하기 힘들 정도로 자연스러운 목소리입니다.<br>
+                           <span class="text-xs opacity-75">(사용하려면 OpenAI API Key가 필요합니다)</span>
+                        </p>
+                        <button onclick="showApiKeyModal(); document.getElementById('voiceHelpModal').remove()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg transition shadow-sm mb-1 flex items-center justify-center">
+                            <i class="fas fa-key mr-2"></i>API Key 등록하기
+                        </button>
+                        <p class="text-[10px] text-indigo-400 mt-1 text-center">* 키는 브라우저에만 저장됩니다.</p>
+                    </div>
+
+                    <!-- System Section -->
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <h4 class="font-bold text-gray-800 mb-2 flex items-center"><i class="fas fa-mobile-alt mr-2 text-gray-400"></i>무료 시스템 음성</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <strong class="block text-xs text-gray-500 mb-1">🍎 아이폰 / 맥 (iOS/macOS)</strong>
+                                <ol class="list-decimal pl-4 space-y-1 text-xs text-gray-600">
+                                    <li>설정 > 손쉬운 사용 > 콘텐츠 말하기 > 음성</li>
+                                    <li><strong>한국어 > Siri</strong> 음성 다운로드</li>
+                                </ol>
+                            </div>
+                            <div class="border-t border-gray-200 pt-2">
+                                <strong class="block text-xs text-gray-500 mb-1">🤖 안드로이드 (Galaxy 등)</strong>
+                                <ol class="list-decimal pl-4 space-y-1 text-xs text-gray-600">
+                                    <li>설정 > 일반 > 글자 읽어주기</li>
+                                    <li>기본 엔진(삼성/Google) 설정 ⚙️</li>
+                                    <li>음성 데이터 설치 > 한국어 다운로드</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <button onclick="document.getElementById('voiceHelpModal').remove()" class="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">닫기</button>
+                </div>
+            </div>
+        `;
+      document.body.appendChild(div);
+    };
+
+    function updateTTSButton(playing) {
+      const btn = document.getElementById('ttsPlayBtn');
+      if (btn) {
+        if (playing) {
+          btn.innerHTML = '<i class="fas fa-stop text-2xl ml-0.5"></i>';
+          btn.classList.add('animate-pulse');
+        } else {
+          btn.innerHTML = '<i class="fas fa-play text-2xl ml-1"></i>';
+          btn.classList.remove('animate-pulse');
+        }
+      }
+    }
+
+    function updateStatus(text, type) {
+      const el = document.getElementById('ttsStatus');
+      if (!el) return;
+      el.innerText = text;
+      if (type === 'active') el.className = "text-xs text-purple-600 font-bold bg-purple-100 px-2 py-0.5 rounded-full animate-pulse";
+      else if (type === 'gray') el.className = "text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full";
+      else el.className = "text-xs text-purple-600 font-medium bg-purple-100 px-2 py-0.5 rounded-full";
+    }
+
+    window.onbeforeunload = function () { window.speechSynthesis.cancel(); };
+
+    if (window.loadVoiceList) setTimeout(window.loadVoiceList, 500);
+
+
+
+  } catch (e) {
+    console.error('Reading load error:', e);
+    app.innerHTML = '<div class="p-4 text-center">오류가 발생했습니다. 다시 시도해주세요.</div>';
+  }
 }
 
-// 음성 재생 (TTS - Web Speech API 사용)
-function playAudio() {
-  const plan = biblePlan.find(p => p.day_number === currentUser.total_days_read + 1);
-  if (!plan || !plan.scripture_text) {
-    alert('말씀 텍스트가 없습니다.');
-    return;
-  }
-  
-  if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(plan.scripture_text);
-    utterance.lang = 'ko-KR';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  } else {
-    alert('이 브라우저는 음성 재생을 지원하지 않습니다.');
-  }
-}
+
 
 // 완독 확인
 async function completeReading(dayNumber) {
   try {
+    if (!currentUser) {
+      alert('로그인 정보가 없습니다. 다시 로그인해주세요.');
+      showLoginScreen();
+      return;
+    }
+
+    // 서버로 완독 요청 전송
     await axios.post('/api/reading/' + currentUser.id, {
-      chapters_read: 5
+      chapters_read: 5,
+      day_number: dayNumber // 진도 체크용
     });
-    
+
     confetti();
-    
+
+    // 지도로 이동
     setTimeout(() => {
       showMapScreen();
     }, 1500);
   } catch (error) {
-    alert('기록 저장에 실패했습니다.');
+    console.error(error);
+    const msg = error.response?.data?.error || '기록 저장에 실패했습니다.';
+    alert(msg);
   }
 }
 
@@ -466,28 +1413,28 @@ function confetti() {
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
   document.body.appendChild(container);
-  
+
   for (let i = 0; i < 50; i++) {
     const emoji = document.createElement('div');
     emoji.textContent = messages[Math.floor(Math.random() * messages.length)];
     emoji.style.cssText = 'position:absolute;left:' + (Math.random() * 100) + '%;top:-50px;font-size:2rem;animation: fall ' + (2 + Math.random() * 2) + 's linear;';
     container.appendChild(emoji);
   }
-  
+
   setTimeout(() => container.remove(), 4000);
 }
 
 // 관리자 설정 화면
 async function showAdminSettings() {
   const app = document.getElementById('app');
-  
+
   const settings = await axios.get('/api/admin/settings');
   adminSettings = settings.data;
-  
-  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
+  const dayNames = ['월', '화', '수', '목', '금'];
   const selectedDays = adminSettings.reading_days.split(',');
-  
+
   let daysHTML = '';
   days.forEach((day, index) => {
     const isChecked = selectedDays.includes(day);
@@ -498,7 +1445,7 @@ async function showAdminSettings() {
       </label>
     `;
   });
-  
+
   app.innerHTML = `
     <div class="min-h-screen bg-gray-50">
       <div class="bg-purple-600 text-white p-6">
@@ -512,6 +1459,24 @@ async function showAdminSettings() {
       </div>
       
       <div class="max-w-4xl mx-auto p-6 space-y-6">
+        <!-- Google Sheet ID 설정 -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <h3 class="text-xl font-bold text-gray-800 mb-4">
+            <i class="fas fa-table text-green-600 mr-2"></i>
+            Google Sheet ID
+          </h3>
+          <input 
+            type="text" 
+            id="settingSheetId" 
+            value="${adminSettings.spreadsheet_id || ''}"
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500"
+            placeholder="Google Sheet URL 또는 ID 입력"
+          >
+          <p class="text-sm text-gray-600 mt-2">
+            연동할 구글 시트의 ID 또는 전체 URL을 입력해주세요.
+          </p>
+        </div>
+
         <!-- 시작 날짜 설정 -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
           <h3 class="text-xl font-bold text-gray-800 mb-4">
@@ -550,23 +1515,32 @@ async function showAdminSettings() {
             Google Sheets 동기화
           </h3>
           <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
-            <p class="text-sm text-blue-800">
-              <strong>Sheet 2 (말씀텍스트)</strong><br>
-              A열: 날짜 | B열: 요일 | C열: 성경구절 | D열: 본문텍스트
+            <p class="text-xs text-blue-800 space-y-1">
+              <strong>Sheet 1 (회원정보):</strong> A열:이름 | B열:전화번호 | C열:비밀번호 | D열:직분 | E열:팀<br>
+              <strong>Sheet 2 (말씀진도):</strong> A열:날짜 | B열:요일 | C열:성경범위 | D열:본문
             </p>
           </div>
-          <button 
-            onclick="syncGoogleSheets()"
-            class="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700"
-          >
-            <i class="fas fa-sync-alt mr-2"></i>
-            교인 & 말씀 동기화
-          </button>
+          <div class="flex space-x-3">
+            <button 
+              onclick="syncGoogleSheets()"
+              class="flex-1 bg-green-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
+            >
+              <i class="fas fa-users mr-2"></i>
+              회원 동기화
+            </button>
+            <button 
+              onclick="syncBiblePlan()"
+              class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              <i class="fas fa-book-open mr-2"></i>
+              진도표 동기화
+            </button>
+          </div>
         </div>
         
         <!-- 저장 버튼 -->
         <div class="sticky bottom-4">
-          <button 
+          <button
             onclick="saveAdminSettings()"
             class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-2xl"
           >
@@ -582,20 +1556,31 @@ async function showAdminSettings() {
 // 관리자 설정 저장
 async function saveAdminSettings() {
   const startDate = document.getElementById('startDate').value;
-  const checkboxes = document.querySelectorAll('#readingDays input:checked');
-  const readingDays = Array.from(checkboxes).map(cb => cb.value).join(',');
-  
-  if (!readingDays) {
+  let sheetId = document.getElementById('settingSheetId').value.trim();
+
+  // URL에서 ID 추출 로직
+  // https://docs.google.com/spreadsheets/d/ID_HERE/edit...
+  const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (urlMatch && urlMatch[1]) {
+    sheetId = urlMatch[1];
+  }
+
+  const selectedDays = Array.from(document.querySelectorAll('#readingDays input:checked'))
+    .map(cb => cb.value)
+    .join(',');
+
+  if (!selectedDays) {
     alert('최소 1개 이상의 요일을 선택해주세요.');
     return;
   }
-  
+
   try {
     await axios.post('/api/admin/settings', {
       program_start_date: startDate,
-      reading_days: readingDays
+      reading_days: selectedDays,
+      spreadsheet_id: sheetId
     });
-    
+
     alert('설정이 저장되었습니다!');
     showMapScreen();
   } catch (error) {
@@ -603,9 +1588,28 @@ async function saveAdminSettings() {
   }
 }
 
-// Google Sheets 동기화 (기존 코드 재사용)
+// Google Sheets: 회원 동기화
 async function syncGoogleSheets() {
-  alert('Google Sheets 동기화 기능은 관리자 패널에서 사용해주세요.');
+  if (!confirm('Google Sheet1에서 회원 정보를 동기화하시겠습니까?')) return;
+
+  try {
+    const response = await axios.post('/api/sync/sheets');
+    alert(response.data.message);
+  } catch (error) {
+    alert(error.response?.data?.error || '회원 동기화 실패');
+  }
+}
+
+// Google Sheets: 성경 진도표 동기화
+async function syncBiblePlan() {
+  if (!confirm('Google Sheet2에서 성경 읽기표를 동기화하시겠습니까?\n기존 데이터는 초기화됩니다.')) return;
+
+  try {
+    const response = await axios.post('/api/sync/bible');
+    alert(response.data.message);
+  } catch (error) {
+    alert(error.response?.data?.error || '진도표 동기화 실패');
+  }
 }
 
 // 팀장 패널 (기존 코드 유지)
@@ -616,11 +1620,11 @@ function showTeamPanel() {
 // 애니메이션 CSS
 const style = document.createElement('style');
 style.textContent = `
-  @keyframes fall {
+@keyframes fall {
     to {
-      transform: translateY(100vh) rotate(360deg);
-      opacity: 0;
-    }
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
   }
+}
 `;
 document.head.appendChild(style);
