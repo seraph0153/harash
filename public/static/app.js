@@ -267,6 +267,12 @@ async function handleLogin(e) {
 
     if (response.data.success) {
       currentUser = response.data.user;
+
+      // 🚧 테스트 계정 관리자 권한 부여 (임시)
+      if (phone === '01063341270') {
+        currentUser.role = 'senior_pastor';
+      }
+
       localStorage.setItem('harash_user', JSON.stringify(currentUser));
       showMapScreen();
     }
