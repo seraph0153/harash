@@ -1,16 +1,16 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
-  "compatibility_date": "2026-01-20",
-  "pages_build_output_dir": "./dist",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "harash-bible-reading-db",
-      "database_id": "local-dev-database"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "webapp",
+	"compatibility_date": "2026-01-20",
+	"pages_build_output_dir": "./dist",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "harash-bible-reading-db",
+			"database_id": "c04f89e6-b481-4ac9-aa95-b0dff8b39a01"
+		}
+	]
 }

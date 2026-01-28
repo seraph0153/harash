@@ -12,6 +12,27 @@ const fontStyle = document.createElement('style');
 fontStyle.textContent = `@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang&family=Gowun+Dodum&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@300;400;700&display=swap');`;
 document.head.appendChild(fontStyle);
 
+// PWA Install Prompt Logic
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // If we are on login screen, show the button
+  const installBtn = document.getElementById('installAppBtn');
+  if (installBtn) installBtn.classList.remove('hidden');
+});
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    deferredPrompt = null;
+  }
+}
+window.installPWA = installPWA;
+
 // Bible Book Codes (전체)
 const BIBLE_BOOK_CODES = {
   '창세기': 'gen', '창': 'gen',
@@ -109,22 +130,39 @@ const AVATAR_EMOJIS = ['😊', '😁', '🤗', '😎', '🥰', '😇', '🤓', '
 
 // 로컬스토리지에서 사용자 정보 불러오기
 async function loadUser() {
+  console.log('[DEBUG] loadUser() started');
   const stored = localStorage.getItem('harash_user');
+  console.log('[DEBUG] stored user:', stored);
+
   if (stored) {
-    currentUser = JSON.parse(stored);
+    try {
+      currentUser = JSON.parse(stored);
+      console.log('[DEBUG] currentUser parsed:', currentUser);
+    } catch (e) {
+      console.error('[CRITICAL] Failed to parse user data:', e);
+      localStorage.removeItem('harash_user');
+      showLoginScreen();
+      return;
+    }
 
     // 성경 진도표 로드 (필수)
     // MapScreen이나 ReadingScreen 모두 필요함
+    console.log('[DEBUG] calling fetchBiblePlan()');
     await fetchBiblePlan();
 
     // 저장된 읽기 화면 상태 확인 (새로고침 복구)
     const lastDay = localStorage.getItem('harash_last_reading_day');
+    console.log('[DEBUG] lastDay:', lastDay);
+
     if (lastDay) {
+      console.log('[DEBUG] showing ReadingScreen');
       showReadingScreen(parseInt(lastDay));
     } else {
+      console.log('[DEBUG] showing MapScreen');
       showMapScreen();
     }
   } else {
+    console.log('[DEBUG] No user found, showing LoginScreen');
     showLoginScreen();
   }
 }
@@ -197,11 +235,24 @@ function showLoginScreen() {
           </button>
         </div>
 
+        <div id="installAppBtn" class="hidden mt-4 text-center">
+          <button 
+            onclick="installPWA()"
+            class="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center"
+          >
+            <i class="fas fa-download mr-2"></i> 앱 설치하기 (홈 화면 추가)
+          </button>
+        </div>
+
       </div>
     </div>
   `;
 
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+  if (deferredPrompt) {
+    document.getElementById('installAppBtn')?.classList.remove('hidden');
+  }
 }
 
 // 로그인 처리
@@ -329,6 +380,15 @@ function logout() {
 
 // 가로 맵 화면
 async function showMapScreen() {
+  // 오디오 정리 (뒤로가기 시 중지)
+  if (window.globalTTSAudio) {
+    window.globalTTSAudio.pause();
+    window.globalTTSAudio.currentTime = 0;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
   // 읽기 화면 상태 해제 (필수: 이 코드가 없으면 새로고침 시 계속 읽기화면으로 돌아감)
   localStorage.removeItem('harash_last_reading_day');
 
@@ -347,6 +407,40 @@ async function showMapScreen() {
   allUsers = usersData.data;
   adminSettings = settingsData.data;
 
+  // Group users by team
+  const teamsMap = {};
+  allUsers.forEach(u => {
+    const tid = u.team_id || 9999;
+    // team_name 이 없는 경우 (가입 직후 등) 처리
+    const tname = u.team_name || (tid === 9999 ? '기타 (팀 없음)' : '팀 ' + tid);
+
+    if (!teamsMap[tid]) teamsMap[tid] = { id: tid, name: tname, users: [], avg_days: 0 };
+    teamsMap[tid].users.push(u);
+  });
+
+  // Convert to array and sort
+  const teams = Object.values(teamsMap).sort((a, b) => {
+    if (a.id === 9999) return 1;
+    if (b.id === 9999) return -1;
+    return a.id - b.id; // ID 순 정렬
+  });
+
+  // Calculate team stats and sort users
+  teams.forEach(t => {
+    if (t.users.length > 0) {
+      const total = t.users.reduce((acc, u) => acc + u.total_days_read, 0);
+      t.avg_days = total / t.users.length;
+    }
+    // Sort users: 1. Leader first, 2. Progress descending
+    t.users.sort((a, b) => {
+      const aIsLeader = a.role === 'team_leader';
+      const bIsLeader = b.role === 'team_leader';
+      if (aIsLeader && !bIsLeader) return -1;
+      if (!aIsLeader && bIsLeader) return 1;
+      return b.total_days_read - a.total_days_read;
+    });
+  });
+
   const isAdmin = ['senior_pastor', 'associate_pastor', 'minister'].includes(currentUser.role);
   const isLeader = ['team_leader', 'deputy_leader'].includes(currentUser.role);
 
@@ -354,31 +448,31 @@ async function showMapScreen() {
     <div class="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
       <!-- 상단 헤더 -->
       <div class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-full mx-auto px-6 py-3 flex items-center justify-between">
-          <div class="flex items-center space-x-3">
+        <div class="max-w-full mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center space-x-2 md:space-x-3">
             <button onclick="showAvatarSelector()" class="relative group">
-              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl cursor-pointer hover:scale-110 transition-transform">
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl md:text-3xl cursor-pointer hover:scale-110 transition-transform">
                 ${currentUser.avatar_url ? '<img src="' + currentUser.avatar_url + '" class="w-full h-full rounded-full object-cover">' : currentUser.avatar_emoji || '😊'}
               </div>
-              <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <i class="fas fa-pencil-alt text-xs text-purple-600"></i>
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <i class="fas fa-pencil-alt text-[8px] md:text-xs text-purple-600"></i>
               </div>
             </button>
-            <div>
-              <div class="font-bold text-gray-800">${currentUser.name}</div>
-              <div class="text-xs text-gray-500">${getRoleKorean(currentUser.role)}</div>
+            <div class="flex flex-col justify-center">
+              <div class="font-bold text-gray-800 text-sm md:text-base leading-tight">${currentUser.name}</div>
+              <div class="text-[10px] md:text-xs text-gray-500 leading-tight">${getRoleKorean(currentUser.role)}</div>
             </div>
           </div>
           
-          <div class="flex items-center space-x-4">
-            ${isAdmin ? '<button onclick="showAdminSettings()" class="text-purple-600 hover:text-purple-700 text-xl"><i class="fas fa-cog"></i></button>' : ''}
-            ${isLeader ? '<button onclick="showTeamPanel()" class="text-blue-600 hover:text-blue-700 text-xl"><i class="fas fa-users"></i></button>' : ''}
-            <div class="flex items-center space-x-1 bg-orange-100 px-3 py-1 rounded-full">
-              <span class="text-2xl">🔥</span>
-              <span class="font-bold text-orange-600">${currentUser.streak_count}</span>
+          <div class="flex items-center space-x-2 md:space-x-4">
+            ${isAdmin ? '<button onclick="showAdminSettings()" class="text-purple-600 hover:text-purple-700 text-lg md:text-xl p-1"><i class="fas fa-cog"></i></button>' : ''}
+            ${isLeader ? '<button onclick="showTeamPanel()" class="text-blue-600 hover:text-blue-700 text-lg md:text-xl p-1"><i class="fas fa-users"></i></button>' : ''}
+            <div class="flex items-center space-x-1 bg-orange-100 px-2 py-0.5 md:px-3 md:py-1 rounded-full">
+              <span class="text-lg md:text-2xl">🔥</span>
+              <span class="font-bold text-orange-600 text-sm md:text-base">${currentUser.streak_count}</span>
             </div>
-            <button onclick="logout()" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-sign-out-alt"></i>
+            <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-1">
+              <i class="fas fa-sign-out-alt text-lg md:text-xl"></i>
             </button>
           </div>
         </div>
@@ -392,18 +486,33 @@ async function showMapScreen() {
       </div>
 
       <!-- 하단 교인 현황 리스트 -->
-      <div class="max-w-4xl mx-auto px-6 pb-20">
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div class="p-6 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
-            <h3 class="text-lg font-bold text-purple-900">
-              <i class="fas fa-list-ol mr-2"></i>우리 교회 말씀 대장정
-            </h3>
-            <span class="text-sm text-purple-600 font-medium">실시간 현황</span>
+      <div class="max-w-4xl mx-auto px-6 pb-20 space-y-6">
+        ${teams.map(team => {
+    const isMyTeam = currentUser.team_id === team.id;
+    const isLeader = currentUser.role === 'team_leader' && isMyTeam;
+
+    return `
+        <div>
+          <div class="flex items-center justify-between mb-3 px-2">
+            <h2 class="text-lg font-bold text-gray-800 flex items-center">
+              <span class="mr-2">${team.name}</span>
+              ${isLeader ? `
+                <button onclick="editTeamName(${team.id}, '${team.name}')" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded ml-2 transition">
+                  <i class="fas fa-edit mr-1"></i>팀명 변경
+                </button>
+              ` : ''}
+              <span class="text-xs font-normal text-gray-500 ml-2 bg-gray-100 px-2 py-0.5 rounded-full">
+                평균 ${team.avg_days ? Math.round(team.avg_days) : 0}일
+              </span>
+            </h2>
           </div>
-          <div class="divide-y divide-gray-100">
-            ${renderMemberRanking()}
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="divide-y divide-gray-50">
+              ${renderUserList(team.users)}
+            </div>
           </div>
         </div>
+      `}).join('')}
       </div>
     </div>
   `;
@@ -486,11 +595,11 @@ function renderHorizontalMap() {
     const dateStr = `${parseInt(dateParts[1])}/${parseInt(dateParts[2])}(${day.week_day})`;
 
     html += `
-      <div class="flex flex-col items-center relative group z-10 w-28 shrink-0">
+      <div class="flex flex-col items-center relative group z-10 w-20 md:w-28 shrink-0">
         <!-- 상단 날짜 -->
-        <div class="mb-3 text-center h-12 flex flex-col justify-end transition-all ${isCurrent ? 'opacity-100 -translate-y-1' : 'opacity-60 group-hover:opacity-100'}">
-          <div class="text-xs font-bold text-gray-500 mb-1">${dateStr}</div>
-          <div class="text-[10px] text-gray-400 border border-gray-200 rounded-full px-2 py-0.5 bg-white">
+        <div class="mb-2 md:mb-3 text-center h-10 md:h-12 flex flex-col justify-end transition-all ${isCurrent ? 'opacity-100 -translate-y-1' : 'opacity-60 group-hover:opacity-100'}">
+          <div class="text-[10px] md:text-xs font-bold text-gray-500 mb-0.5 md:mb-1">${dateStr}</div>
+          <div class="text-[8px] md:text-[10px] text-gray-400 border border-gray-200 rounded-full px-1.5 py-0.5 bg-white">
             ${day.day_number}일차
           </div>
         </div>
@@ -498,20 +607,20 @@ function renderHorizontalMap() {
         <!-- 원형 노드 -->
         <button 
           onclick="${!isLocked ? 'showReadingScreen(' + dayNumber + ')' : 'void(0)'}"
-          class="relative w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold transition-all duration-300 ${nodeClass} ${glow} ${scale} ${isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg'} z-20"
+          class="relative w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-sm md:text-xl font-bold transition-all duration-300 ${nodeClass} ${glow} ${scale} ${isLocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:shadow-lg'} z-20"
         >
           ${icon}
         </button>
         
         <!-- 하단 책 제목 -->
-        <div class="mt-3 text-center w-24">
-          <div class="text-xs font-bold text-gray-700 truncate">${day.book_name}</div>
-          <div class="text-[10px] text-gray-500">${day.start_chapter}-${day.end_chapter}</div>
+        <div class="mt-2 md:mt-3 text-center w-20 md:w-24">
+          <div class="text-[10px] md:text-xs font-bold text-gray-700 truncate">${day.book_name}</div>
+          <div class="text-[8px] md:text-[10px] text-gray-500">${day.start_chapter}-${day.end_chapter}</div>
         </div>
         
         <!-- 연결선 -->
         ${index < viewPlan.length - 1 ? `
-          <div class="absolute top-[5.8rem] left-[50%] w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2">
+          <div class="absolute top-[4.5rem] md:top-[5.8rem] left-[50%] w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2">
             <div class="h-full bg-green-400 transition-all duration-1000" style="width: ${isCompleted ? '100%' : '0%'}"></div>
           </div>
         ` : ''}
@@ -540,36 +649,36 @@ function renderMemberRanking() {
     const totalChapters = completedPlan.reduce((sum, day) => sum + (day.end_chapter - day.start_chapter + 1), 0);
 
     return `
-      <div class="flex items-center px-6 py-4 hover:bg-gray-50 transition-colors ${isMe ? 'bg-purple-50' : ''}">
-        <div class="w-8 text-center text-gray-400 font-bold mr-4 text-sm">${index + 1}</div>
+      <div class="flex items-center px-4 md:px-6 py-3 md:py-4 hover:bg-gray-50 transition-colors ${isMe ? 'bg-purple-50' : ''}">
+        <div class="w-6 md:w-8 text-center text-gray-400 font-bold mr-2 md:mr-4 text-xs md:text-sm">${index + 1}</div>
         
-        <div class="relative mr-4">
-          <div class="w-12 h-12 rounded-full bg-white border-2 ${isMe ? 'border-purple-400' : 'border-gray-200'} flex items-center justify-center text-2xl shadow-sm overflow-hidden">
+        <div class="relative mr-3 md:mr-4 flex-shrink-0">
+          <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white border-2 ${isMe ? 'border-purple-400' : 'border-gray-200'} flex items-center justify-center text-2xl shadow-sm overflow-hidden">
             ${user.avatar_url ? `<img src="${user.avatar_url}" class="w-full h-full object-cover">` : (user.avatar_emoji || '😊')}
           </div>
-          ${index < 3 ? '<div class="absolute -top-1 -right-1 text-lg">👑</div>' : ''}
+          ${index < 3 ? '<div class="absolute -top-1 -right-1 text-base md:text-lg">👑</div>' : ''}
         </div>
         
-        <div class="flex-1 min-w-0 mr-4">
-          <div class="flex items-center mb-1">
-            <span class="font-bold text-gray-800 mr-2 truncate">${user.name}</span>
-            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">${getRoleKorean(user.role)}</span>
+        <div class="flex-1 min-w-0 mr-2">
+          <div class="flex items-center mb-0.5 flex-wrap">
+            <span class="font-bold text-gray-800 mr-2 text-sm md:text-base truncate max-w-[80px] md:max-w-none">${user.name}</span>
+            <span class="text-[10px] md:text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full whitespace-nowrap">${getRoleKorean(user.role)}</span>
           </div>
-          <div class="flex items-center text-xs text-gray-500 space-x-2">
-            <span>${user.streak_count}일 연속 🔥</span>
-            <span>·</span>
-            <span>${user.total_days_read}일차 완료</span>
+          <div class="flex flex-col md:flex-row md:items-center text-[10px] md:text-xs text-gray-500 md:space-x-2 leading-tight">
+            <span class="truncate">${user.streak_count}일 연속 🔥</span>
+            <span class="hidden md:inline">·</span>
+            <span class="truncate">${user.total_days_read}일차 완료</span>
           </div>
         </div>
         
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-1 md:space-x-3 shrink-0">
           ${showEncourage ? `
-            <button onclick="showEncouragementDialog(${user.id}, ${user.total_days_read})" class="text-gray-400 hover:text-purple-500 transition-colors p-2">
-              <i class="far fa-comment-dots text-xl"></i>
+            <button onclick="showEncouragementDialog(${user.id}, ${user.total_days_read})" class="text-gray-400 hover:text-purple-500 transition-colors p-1 md:p-2">
+              <i class="far fa-comment-dots text-lg md:text-xl"></i>
             </button>
           ` : ''}
-          <div class="text-right w-16">
-            <div class="text-sm font-bold text-purple-600">${totalChapters}장</div>
+          <div class="text-right w-10 md:w-16">
+            <div class="text-xs md:text-sm font-bold text-purple-600 whitespace-nowrap">${totalChapters}장</div>
           </div>
         </div>
       </div>
@@ -749,32 +858,41 @@ async function showReadingScreen(dayNumber) {
         .map(([key, _]) => key)
         .sort((a, b) => a.length - b.length)[0];
 
-      // 3. 본문 파싱
+      // 3. 본문 파싱 (여러 장 처리)
       const verses = [];
-      let verseNum = 1;
-
       const bookName = plan.book_name;
 
-      console.log('Parsing Bible:', { bookAbbr, bookName, chapter: plan.start_chapter });
+      console.log('Parsing Bible Range:', { bookAbbr, bookName, start: plan.start_chapter, end: plan.end_chapter });
 
-      while (true) {
-        // 시도 1: 약어 + 장:절 (예: 창1:1)
-        let key1 = `${bookAbbr}${plan.start_chapter}:${verseNum}`;
-        // 시도 2: 전체이름 + 장:절 (예: 창세기1:1)
-        let key2 = `${bookName}${plan.start_chapter}:${verseNum}`;
+      // start_chapter부터 end_chapter까지 반복
+      for (let ch = plan.start_chapter; ch <= plan.end_chapter; ch++) {
+        let verseNum = 1;
 
-        let text = bible[key1] || bible[key2];
+        // 장 구분 표시 (1장 이상일 때만)
+        if (plan.end_chapter > plan.start_chapter) {
+          verses.push(`<h3 class="text-xl font-bold text-center text-purple-800 mt-8 mb-4 border-b border-purple-100 pb-2">${ch}장</h3>`);
+        } else {
+          verses.push(`<div class="mt-4"></div>`); // 첫 장 상단 여백
+        }
 
-        if (!text) break;
-        verses.push(`<p class="mb-1"><b class="text-purple-700 font-bold mr-1">${verseNum}.</b>${text}</p>`);
-        verseNum++;
+        while (true) {
+          // 시도 1: 약어 + 장:절 (예: 창1:1)
+          let key1 = `${bookAbbr}${ch}:${verseNum}`;
+          // 시도 2: 전체이름 + 장:절 (예: 창세기1:1)
+          let key2 = `${bookName}${ch}:${verseNum}`;
+
+          let text = bible[key1] || bible[key2];
+
+          if (!text) break; // 해당 장의 끝
+          verses.push(`<p class="mb-1"><b class="text-purple-700 font-bold mr-1">${verseNum}.</b>${text}</p>`);
+          verseNum++;
+        }
       }
 
       if (verses.length > 0) {
         html = verses.join('\n');
       } else {
         console.warn(`No verses found. Plan:`, plan);
-        // Fallback: If no text found, maybe show a hint or the raw plan data for debugging
         if (!bookCode) {
           html = `<div class="p-4 bg-red-50 text-red-600 rounded">
                 <p class="font-bold">성경 책 이름을 찾을 수 없습니다.</p>
@@ -784,6 +902,7 @@ async function showReadingScreen(dayNumber) {
         }
       }
 
+      // 오디오는 첫 장만 재생 (또는 UI에서 선택 가능하게 개선 필요 - 일단 첫 장 유지)
       audio_url = `https://www.bskorea.or.kr/bible/listen.php?version=GAE&book=${bookCode}&chap=${plan.start_chapter}`;
       source_url = `https://www.bskorea.or.kr/bible/korbibReadpage.php?version=GAE&book=${bookCode}&chap=${plan.start_chapter}`;
     }
@@ -912,6 +1031,33 @@ async function showReadingScreen(dayNumber) {
               </button>
             </div>
 
+            <!-- Comments Section -->
+            <div class="mt-8 border-t border-gray-100 pt-8">
+              <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-comments text-purple-600 mr-2"></i> 묵상 나눔
+              </h3>
+
+              <!-- Comment List -->
+              <div id="commentList" class="space-y-4 mb-8">
+                <div class="text-center text-gray-400 py-4 text-sm">로딩 중...</div>
+              </div>
+
+              <!-- Comment Form -->
+              <div class="bg-gray-50 rounded-xl p-4 flex gap-3">
+                <div class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center py-2 shrink-0">
+                  ${currentUser.avatar_url ? `<img src="${currentUser.avatar_url}" class="w-full h-full rounded-full object-cover">` : currentUser.avatar_emoji || '😊'}
+                </div>
+                <div class="flex-1">
+                  <textarea id="commentInput" rows="2" placeholder="오늘 말씀에서 은혜받은 점을 나누어보세요..." class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none bg-white"></textarea>
+                  <div class="flex justify-end mt-2">
+                    <button onclick="submitComment(${plan.day_number})" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors">
+                      나눔하기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="text-center mt-4">
                <a href="${source_url}" target="_blank" class="inline-flex items-center text-xs text-gray-400 hover:text-purple-600 transition-colors">
                 <i class="fas fa-external-link-alt mr-1"></i> 대한성서공회 원문 보기
@@ -922,6 +1068,9 @@ async function showReadingScreen(dayNumber) {
         </div>
       </div>
     `;
+
+    // Load Comments
+    loadComments(plan.day_number);
 
     // --- Logic Implementation ---
 
@@ -1029,7 +1178,11 @@ async function showReadingScreen(dayNumber) {
     }
 
     // OpenAI Audio Object (Reuse for Original TTS)
-    let ttsAudio = new Audio();
+    // ttsAudio is now global to prevent overlap
+    if (!window.globalTTSAudio) {
+      window.globalTTSAudio = new Audio();
+    }
+    const ttsAudio = window.globalTTSAudio;
 
     // [New] BSKorea Original Audio Handler
     function handleOriginalTTS() {
@@ -1343,6 +1496,150 @@ async function showReadingScreen(dayNumber) {
       document.body.appendChild(div);
     };
 
+    // 프로필 설정 모달
+    window.showProfileModal = function () {
+      const div = document.createElement('div');
+      div.id = 'profileModal';
+      div.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in';
+
+      const avatarUrl = currentUser.avatar_url || '';
+      const isPhoto = !!avatarUrl;
+
+      div.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative">
+                <button onclick="document.getElementById('profileModal').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                
+                <h3 class="text-xl font-bold text-gray-800 mb-6 text-center">프로필 설정</h3>
+                
+                <div class="flex flex-col items-center mb-6">
+                    <div class="relative group cursor-pointer" onclick="document.getElementById('profileInput').click()">
+                        <div id="previewContainer" class="w-24 h-24 rounded-full overflow-hidden border-4 border-purple-100 flex items-center justify-center text-4xl bg-purple-50 shadow-inner">
+                            ${isPhoto
+          ? `<img src="${avatarUrl}" class="w-full h-full object-cover">`
+          : currentUser.avatar_emoji || '😊'}
+                        </div>
+                        <div class="absolute inset-0 bg-black bg-opacity-30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-camera text-white text-xl"></i>
+                        </div>
+                    </div>
+                    <input type="file" id="profileInput" accept="image/*" class="hidden" onchange="handleProfileImage(this)">
+                    <p class="text-xs text-gray-500 mt-2">터치하여 사진 변경</p>
+                </div>
+
+                <div class="grid grid-cols-5 gap-2 mb-6">
+                    ${['😊', '🙏', '📖', '✝️', '🕊️', '❤️', '🌿', '⛪', '🙌', '🎵'].map(emoji => `
+                        <button onclick="updateProfileEmoji('${emoji}')" class="text-2xl p-2 hover:bg-purple-50 rounded-lg transition ${currentUser.avatar_emoji === emoji && !isPhoto ? 'bg-purple-100 ring-2 ring-purple-400' : ''}">
+                            ${emoji}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <button onclick="saveProfile()" class="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition shadow-lg">
+                    저장하기
+                </button>
+            </div>
+        `;
+      document.body.appendChild(div);
+    };
+
+    window.handleProfileImage = function (input) {
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+
+        // 용량 제한 (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('사진 용량이 너무 큽니다. (5MB 이하)');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          // 이미지 리사이징 (Client-side)
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = function () {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 최대 150px
+            const maxSize = 150;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxSize) {
+                height *= maxSize / width;
+                width = maxSize;
+              }
+            } else {
+              if (height > maxSize) {
+                width *= maxSize / height;
+                height = maxSize;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Base64 (JPEG 70%)
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+            // Preview Update
+            const preview = document.getElementById('previewContainer');
+            preview.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+            preview.dataset.newInfo = JSON.stringify({ type: 'image', value: dataUrl });
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    window.updateProfileEmoji = function (emoji) {
+      const preview = document.getElementById('previewContainer');
+      preview.innerHTML = emoji;
+      preview.className = "w-24 h-24 rounded-full overflow-hidden border-4 border-purple-100 flex items-center justify-center text-4xl bg-purple-50 shadow-inner"; // Reset styling in case it was image
+      preview.dataset.newInfo = JSON.stringify({ type: 'emoji', value: emoji });
+    };
+
+    window.saveProfile = async function () {
+      const preview = document.getElementById('previewContainer');
+      const newInfoStr = preview.dataset.newInfo;
+
+      if (!newInfoStr) {
+        document.getElementById('profileModal').remove();
+        return;
+      }
+
+      const newInfo = JSON.parse(newInfoStr);
+      try {
+        await axios.post(`/api/user/${currentUser.id}/avatar`, {
+          avatar_emoji: newInfo.type === 'emoji' ? newInfo.value : currentUser.avatar_emoji,
+          avatar_url: newInfo.type === 'image' ? newInfo.value : null
+        });
+
+        // 로컬 업데이트
+        if (newInfo.type === 'emoji') {
+          currentUser.avatar_emoji = newInfo.value;
+          currentUser.avatar_url = null;
+        } else {
+          currentUser.avatar_url = newInfo.value;
+        }
+
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        alert('프로필이 저장되었습니다.');
+        document.getElementById('profileModal').remove();
+
+        // 화면 갱신 (리로드 없이)
+        if (typeof showMapScreen === 'function') showMapScreen();
+
+      } catch (error) {
+        alert('저장 실패: ' + error.message);
+      }
+    };
+
     function updateTTSButton(playing) {
       const btn = document.getElementById('ttsPlayBtn');
       if (btn) {
@@ -1424,6 +1721,95 @@ function confetti() {
   setTimeout(() => container.remove(), 4000);
 }
 
+// 조직도 그래프 보기
+window.showAdminGraph = async function () {
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="flex items-center justify-center h-screen"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div>';
+
+  try {
+    const res = await axios.get('/api/admin/graph');
+    const { nodes, links } = res.data;
+
+    app.innerHTML = `
+      <div class="relative w-full h-screen bg-gray-900 overflow-hidden">
+        <div class="absolute top-4 left-4 z-10 flex space-x-2">
+            <button onclick="showMapScreen()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i> 돌아가기
+            </button>
+            <div class="bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg backdrop-blur-sm">
+                <span class="mr-3"><span class="inline-block w-3 h-3 rounded-full bg-purple-500 mr-1"></span>담임목사</span>
+                <span class="mr-3"><span class="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span>팀</span>
+                <span class="mr-3"><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>팀장</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-gray-400 mr-1"></span>팀원</span>
+            </div>
+        </div>
+        <div id="graph-container"></div>
+      </div>
+    `;
+
+    const Graph = ForceGraph()
+      (document.getElementById('graph-container'))
+      .graphData({ nodes, links })
+      .nodeLabel('label')
+      .nodeColor(node => {
+        if (node.type === 'master') return '#a855f7'; // Purple
+        if (node.type === 'team') return '#3b82f6';   // Blue
+        if (node.type === 'leader') return '#22c55e'; // Green
+        return '#9ca3af'; // Gray
+      })
+      .nodeVal(node => {
+        if (node.type === 'master') return 20;
+        if (node.type === 'team') return 15;
+        if (node.type === 'leader') return 10;
+        return 5;
+      })
+      .linkColor(() => 'rgba(255,255,255,0.2)')
+      .linkWidth(2)
+      .nodeCanvasObject((node, ctx, globalScale) => {
+        const label = node.label;
+        const fontSize = 12 / globalScale;
+        ctx.font = `${fontSize}px Sans-Serif`;
+        const textWidth = ctx.measureText(label).width;
+        const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2); // some padding
+
+        // Circle
+        ctx.beginPath();
+        const r = node.type === 'master' ? 8 : (node.type === 'team' ? 6 : 4);
+        ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+        ctx.fillStyle = node.color || (node.type === 'master' ? '#a855f7' : (node.type === 'team' ? '#3b82f6' : (node.type === 'leader' ? '#22c55e' : '#9ca3af')));
+        ctx.fill();
+
+        // Image/Emoji?
+        if (node.emoji) {
+          ctx.font = `${r * 1.5}px Sans-Serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'white';
+          // ctx.fillText(node.emoji, node.x, node.y); 
+          // Emoji rendering might be tricky on canvas, stick to circles for now or use node.emoji if desired
+        }
+
+        // Text Label
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText(label, node.x, node.y + r + fontSize);
+
+        node.__bckgDimensions = bckgDimensions; // to re-use in nodePointerAreaPaint
+      })
+      .onNodeClick(node => {
+        // Zoom to fit?
+        Graph.centerAt(node.x, node.y, 1000);
+        Graph.zoom(8, 2000);
+      });
+
+  } catch (e) {
+    alert('조직도 데이터를 불러오는데 실패했습니다.');
+    console.error(e);
+    showMapScreen();
+  }
+};
+
 // 관리자 설정 화면
 async function showAdminSettings() {
   const app = document.getElementById('app');
@@ -1450,7 +1836,7 @@ async function showAdminSettings() {
     <div class="min-h-screen bg-gray-50">
       <div class="bg-purple-600 text-white p-6">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
-          <button onclick="showMapScreen()" class="hover:bg-purple-700 px-3 py-2 rounded-lg">
+          <button type="button" onclick="showMapScreen()" class="hover:bg-purple-700 px-3 py-2 rounded-lg">
             <i class="fas fa-arrow-left mr-2"></i>돌아가기
           </button>
           <h1 class="text-2xl font-bold">프로그램 설정</h1>
@@ -1517,30 +1903,60 @@ async function showAdminSettings() {
           <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
             <p class="text-xs text-blue-800 space-y-1">
               <strong>Sheet 1 (회원정보):</strong> A열:이름 | B열:전화번호 | C열:비밀번호 | D열:직분 | E열:팀<br>
-              <strong>Sheet 2 (말씀진도):</strong> A열:날짜 | B열:요일 | C열:성경범위 | D열:본문
+              <strong>Sheet 2 (말씀진도):</strong> A열:날짜 | B열:요일 | C열:성경범위 | D열:본문<br>
+              <strong>Apps Script:</strong> 데이터를 앱에서 시트로 내보내려면 스크립트 연결이 필요합니다.
             </p>
           </div>
-          <div class="flex space-x-3">
+          
+          <div class="mb-4">
+             <label class="block text-sm font-bold text-gray-700 mb-1">Google Apps Script 웹 앱 URL</label>
+             <input 
+                type="text" 
+                id="settingAppsScriptUrl" 
+                value="${adminSettings.apps_script_url || ''}"
+                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 text-sm"
+                placeholder="https://script.google.com/macros/s/..."
+             >
+             <p class="text-[10px] text-gray-500 mt-1">
+               * 시트 확장 프로그램 > Apps Script > 배포 > 웹 앱 URL을 복사해 붙여넣으세요.
+             </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
             <button 
+              type="button"
               onclick="syncGoogleSheets()"
-              class="flex-1 bg-green-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors"
+              class="flex flex-col items-center justify-center bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 transition-colors border border-gray-200"
             >
-              <i class="fas fa-users mr-2"></i>
-              회원 동기화
+              <i class="fas fa-arrow-down text-lg mb-1 text-green-600"></i>
+              <span class="font-bold text-sm">시트에서 가져오기</span>
+              <span class="text-[10px] text-gray-500">(회원 추가/수정)</span>
             </button>
             <button 
-              onclick="syncBiblePlan()"
-              class="flex-1 bg-indigo-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+              type="button"
+              onclick="exportUsersToSheet()"
+              class="flex flex-col items-center justify-center bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 transition-colors border border-gray-200"
             >
-              <i class="fas fa-book-open mr-2"></i>
-              진도표 동기화
+              <i class="fas fa-arrow-up text-lg mb-1 text-blue-600"></i>
+              <span class="font-bold text-sm">시트로 내보내기</span>
+              <span class="text-[10px] text-gray-500">(앱 명단 ➡ 시트)</span>
             </button>
           </div>
+
+          <button 
+            type="button"
+            onclick="syncBiblePlan()"
+            class="w-full bg-indigo-50 text-indigo-700 px-4 py-3 rounded-xl font-semibold hover:bg-indigo-100 transition-colors border border-indigo-200"
+          >
+            <i class="fas fa-book-open mr-2"></i>
+            진도표 가져오기 (초기화 주의)
+          </button>
         </div>
         
         <!-- 저장 버튼 -->
         <div class="sticky bottom-4">
           <button
+            type="button"
             onclick="saveAdminSettings()"
             class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-2xl"
           >
@@ -1553,10 +1969,25 @@ async function showAdminSettings() {
   `;
 }
 
+// 팀 이름 변경 (팀장용)
+async function editTeamName(teamId, currentName) {
+  const newName = prompt('변경할 팀 이름을 입력하세요:', currentName);
+  if (!newName || newName === currentName) return;
+
+  try {
+    await axios.put(`/api/teams/${teamId}`, { name: newName });
+    alert('팀 이름이 변경되었습니다.');
+    showMapScreen(); // 화면 갱신
+  } catch (error) {
+    alert('팀 이름 변경 실패: 권한이 없거나 오류가 발생했습니다.');
+  }
+}
+
 // 관리자 설정 저장
 async function saveAdminSettings() {
   const startDate = document.getElementById('startDate').value;
   let sheetId = document.getElementById('settingSheetId').value.trim();
+  const appsScriptUrl = document.getElementById('settingAppsScriptUrl').value.trim();
 
   // URL에서 ID 추출 로직
   // https://docs.google.com/spreadsheets/d/ID_HERE/edit...
@@ -1578,7 +2009,8 @@ async function saveAdminSettings() {
     await axios.post('/api/admin/settings', {
       program_start_date: startDate,
       reading_days: selectedDays,
-      spreadsheet_id: sheetId
+      spreadsheet_id: sheetId,
+      apps_script_url: appsScriptUrl
     });
 
     alert('설정이 저장되었습니다!');
@@ -1612,9 +2044,93 @@ async function syncBiblePlan() {
   }
 }
 
+// Google Sheets: 회원 명단 내보내기
+async function exportUsersToSheet() {
+  if (!confirm('현재 앱에 저장된 모든 회원 명단을 구글 시트(Sheet1)로 내보내겠습니까?\n(기존 시트 명단은 업데이트됩니다.)')) return;
+
+  try {
+    // 1. 설정 확인 (URL 있는지)
+    const settings = await axios.get('/api/admin/settings');
+    if (!settings.data.apps_script_url) {
+      alert('설정에 "Apps Script URL"이 입력되지 않았습니다.\n먼저 스크립트를 배포하고 URL을 저장해주세요.');
+      return;
+    }
+
+    const response = await axios.post('/api/sync/export/users');
+
+    if (response.data.success) {
+      alert('구글 시트로 명단을 성공적으로 내보냈습니다!');
+    } else {
+      alert('내보내기 실패: ' + (response.data.error || '알 수 없는 오류'));
+    }
+  } catch (error) {
+    console.error(error);
+    alert('내보내기 중 오류가 발생했습니다. (Apps Script URL을 제데로 입력했는지 확인해주세요)');
+  }
+}
+
 // 팀장 패널 (기존 코드 유지)
 function showTeamPanel() {
   alert('팀장 패널은 기존 관리자 패널에서 사용해주세요.');
+}
+
+// 댓글 로드
+async function loadComments(dayNumber) {
+  const listEl = document.getElementById('commentList');
+  if (!listEl) return;
+
+  try {
+    const res = await axios.get('/api/comments/' + dayNumber);
+    const comments = res.data;
+
+    if (comments.length === 0) {
+      listEl.innerHTML = '<div class="text-center text-gray-400 py-4 text-xs">아직 작성된 나눔이 없습니다. 첫 번째 나눔을 남겨보세요!</div>';
+      return;
+    }
+
+    listEl.innerHTML = comments.map(c => `
+      <div class="flex gap-3 animate-fade-in-up">
+        <div class="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+          ${c.avatar_url ? `<img src="${c.avatar_url}" class="w-full h-full object-cover">` : c.avatar_emoji || '😊'}
+        </div>
+        <div class="flex-1 bg-gray-50 rounded-2xl rounded-tl-none p-3 relative group hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-gray-900 text-sm">${c.user_name} <span class="text-xs text-gray-500 font-normal ml-1">${getRoleKorean(c.role)}</span></span>
+            <span class="text-[10px] text-gray-400">${new Date(c.created_at).toLocaleDateString()}</span>
+          </div>
+          <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">${c.content}</p>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (e) {
+    console.error(e);
+    listEl.innerHTML = '<div class="text-center text-red-400 py-2 text-xs">댓글을 불러오지 못했습니다.</div>';
+  }
+}
+
+// 댓글 작성
+async function submitComment(dayNumber) {
+  const input = document.getElementById('commentInput');
+  const content = input.value.trim();
+
+  if (!content) {
+    alert('내용을 입력해주세요.');
+    return;
+  }
+
+  try {
+    await axios.post('/api/comments', {
+      user_id: currentUser.id,
+      day_number: dayNumber,
+      content: content
+    });
+
+    input.value = '';
+    loadComments(dayNumber); // 목록 새로고침
+  } catch (e) {
+    alert('나눔 등록에 실패했습니다.');
+  }
 }
 
 // 애니메이션 CSS

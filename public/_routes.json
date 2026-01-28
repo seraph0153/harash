@@ -6,6 +6,8 @@
     "exclude": [
         "/static/*",
         "/data/*",
-        "/favicon.svg"
+        "/favicon.svg",
+        "/manifest.json",
+        "/icon-512.png"
     ]
 }

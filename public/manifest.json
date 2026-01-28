@@ -1,0 +1,16 @@
+{
+    "name": "하라쉬 성경읽기",
+    "short_name": "하라쉬",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#6d28d9",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/icon-512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}

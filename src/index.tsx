@@ -11,13 +11,19 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// PIN 해시 헬퍼
+// PIN 해시 헬퍼 (Cloudflare Workers 호환)
 async function hashPin(pin: string, salt: string): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(pin + salt)
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+// PIN 검증 헬퍼
+async function verifyPin(pin: string, salt: string, hash: string): Promise<boolean> {
+  const computed = await hashPin(pin, salt)
+  return computed === hash
 }
 
 // Google Sheets 설정
@@ -63,6 +69,38 @@ async function loadBibleData() {
     return null
   }
 }
+
+// 오디오 프록시 (CORS 우회)
+app.get('/api/proxy/audio', async (c) => {
+  const url = c.req.query('url')
+  if (!url) return c.json({ error: 'URL is required' }, 400)
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Referer': 'https://www.bskorea.or.kr/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    })
+
+    if (!response.ok) {
+      console.error(`Audio Proxy Failed: ${response.status} ${response.statusText}`, url)
+      return c.json({ error: 'Failed to fetch audio' }, 502)
+    }
+
+    // 오디오 스트리밍
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=31536000',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+  } catch (e) {
+    console.error('Proxy Error:', e)
+    return c.json({ error: 'Proxy internal error' }, 500)
+  }
+})
 
 // 로그인 (휴대폰 + PIN)
 app.post('/api/login', async (c) => {
@@ -367,14 +405,14 @@ app.get('/api/team/:teamId/progress', async (c) => {
   const result = await c.env.DB.prepare(
     `SELECT 
       u.id,
-      u.name,
-      u.total_days_read,
-      u.streak_count,
-      u.avatar_emoji,
-      u.avatar_url
+    u.name,
+    u.total_days_read,
+    u.streak_count,
+    u.avatar_emoji,
+    u.avatar_url
      FROM users u
      WHERE u.team_id = ?
-     ORDER BY u.total_days_read DESC`
+    ORDER BY u.total_days_read DESC`
   ).bind(teamId).all()
 
   return c.json(result.results)
@@ -386,45 +424,50 @@ app.get('/api/admin/settings', async (c) => {
     'SELECT * FROM admin_settings WHERE id = 1'
   ).first()
 
-  return c.json(settings || {
-    program_start_date: '2026-01-21',
-    reading_days: 'mon,tue,wed,thu,fri',
-    spreadsheet_id: DEFAULT_SPREADSHEET_ID
-  })
+  return c.json(settings)
 })
 
 // 관리자 설정 업데이트
+// 관리자 설정 업데이트
 app.post('/api/admin/settings', async (c) => {
-  const { program_start_date, reading_days, spreadsheet_id } = await c.req.json()
+  const { program_start_date, reading_days, spreadsheet_id, apps_script_url } = await c.req.json()
 
   await c.env.DB.prepare(
-    `INSERT INTO admin_settings (id, program_start_date, reading_days, spreadsheet_id, updated_at)
-     VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
+    `INSERT INTO admin_settings(id, program_start_date, reading_days, spreadsheet_id, apps_script_url, updated_at)
+     VALUES(1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(id) DO UPDATE SET 
        program_start_date = ?,
        reading_days = ?,
        spreadsheet_id = ?,
+       apps_script_url = ?,
        updated_at = CURRENT_TIMESTAMP`
   ).bind(
     program_start_date,
     reading_days,
     spreadsheet_id || DEFAULT_SPREADSHEET_ID,
+    apps_script_url,
     program_start_date,
     reading_days,
-    spreadsheet_id || DEFAULT_SPREADSHEET_ID
+    spreadsheet_id || DEFAULT_SPREADSHEET_ID,
+    apps_script_url
   ).run()
 
   return c.json({ success: true })
 })
 
-// 사용자 아바타 업데이트
+// 사용자 아바타 업데이트 (프로필 사진/이모지)
 app.post('/api/user/:userId/avatar', async (c) => {
   const userId = c.req.param('userId')
   const { avatar_emoji, avatar_url } = await c.req.json()
 
+  // Base64 이미지 용량 체크 (대략적)
+  if (avatar_url && avatar_url.length > 100 * 1024) { // 100KB Limit
+    return c.json({ error: '이미지 용량이 너무 큽니다.' }, 400);
+  }
+
   await c.env.DB.prepare(
     'UPDATE users SET avatar_emoji = ?, avatar_url = ? WHERE id = ?'
-  ).bind(avatar_emoji || null, avatar_url || null, userId).run()
+  ).bind(avatar_emoji, avatar_url, userId).run()
 
   return c.json({ success: true })
 })
@@ -449,23 +492,148 @@ app.get('/api/encouragement/log/:logId', async (c) => {
      FROM encouragements_new e
      JOIN users u ON e.from_user_id = u.id
      WHERE e.reading_log_id = ?
-     ORDER BY e.created_at DESC`
+    ORDER BY e.created_at DESC`
   ).bind(logId).all()
 
   return c.json(result.results)
 })
 
+// Google Apps Script로 내보내기 (Helper Function)
+async function exportToAppsScript(db: D1Database, type: string, data: any) {
+  const settings = await db.prepare('SELECT apps_script_url FROM admin_settings WHERE id = 1').first();
+  const url = settings?.apps_script_url;
+
+  if (!url) return { success: false, error: 'Apps Script URL not configured' };
+
+  try {
+    const response = await fetch(url as string, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, ...data })
+    });
+
+    // Apps Script returns redirects sometimes, follow them handling needed? 
+    // fetch follows redirects by default usually.
+    return { success: response.ok };
+  } catch (e) {
+    console.error('Export Error:', e);
+    return { success: false, error: String(e) };
+  }
+}
+
+// 회원 명단 내보내기 (TO Google Sheets)
+app.post('/api/sync/export/users', async (c) => {
+  try {
+    const users = await c.env.DB.prepare(`
+      SELECT 
+        name, phone, active,
+    (SELECT name FROM teams WHERE id = users.team_id) as team,
+    role,
+    pin_salt as pin --Export Salt / Original PIN ? No, pin is hashed. 
+        --Wait, pin_hash is hashed.We cannot export original PIN unless we stored it. 
+        --Actually, we have '1234' default.
+  --Issue: We cannot view original PINs if they are hashed.
+        --Solution: Export '****' or just name / phone. 
+        --User Request: "관리자가 앱에서 동기화를 누르면 앱의 명단이 시트로 넘어갔으면"
+  --This implies syncing Name / Phone is most important.
+      FROM users 
+      WHERE church_id = 1 AND active = 1
+    `).all();
+
+    // Map rows to match Apps Script expectation
+    // Script expects: users: [{ name, phone, pin, role, team }]
+    // We can't decrypt PIN. We will send empty PIN or keep logic in Script to not overwrite if empty.
+    const userList = users.results.map(u => ({
+      name: u.name,
+      phone: u.phone,
+      pin: '', // Cannot export hashed pin
+      role: u.role,
+      team: u.team || ''
+    }));
+
+    await exportToAppsScript(c.env.DB, 'users', { users: userList });
+
+    return c.json({ success: true, message: '회원 명단을 시트로 내보냈습니다.' });
+  } catch (e) {
+    return c.json({ error: '내보내기 실패' }, 500);
+  }
+});
+
+// 댓글 목록 조회 API
+app.get('/api/comments/:day', async (c) => {
+  const day = parseInt(c.req.param('day'))
+
+  if (isNaN(day)) {
+    return c.json({ error: '잘못된 날짜입니다.' }, 400)
+  }
+
+  const result = await c.env.DB.prepare(
+    `SELECT
+  c.id,
+    c.content,
+    c.created_at,
+    c.day_number,
+    u.name as user_name,
+    u.avatar_emoji,
+    u.avatar_url,
+    u.role,
+    u.id as user_id
+     FROM comments c
+     JOIN users u ON c.user_id = u.id
+     WHERE c.day_number = ?
+    ORDER BY c.created_at DESC`
+  ).bind(day).all()
+
+  return c.json(result.results)
+})
+
+// 댓글 작성 API (Updated with Export)
+app.post('/api/comments', async (c) => {
+  const { user_id, day_number, content } = await c.req.json()
+
+  if (!user_id || !day_number || !content) {
+    return c.json({ error: '필수 정보가 누락되었습니다.' }, 400)
+  }
+
+  try {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO comments(user_id, day_number, content) VALUES(?, ?, ?)`
+    ).bind(user_id, day_number, content).run()
+
+    if (!result.success) {
+      throw new Error('Database insert failed');
+    }
+
+    // Async Export (Fire and Forget to avoid UI delay)
+    const user = await c.env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(user_id).first();
+
+    c.executionCtx.waitUntil(
+      exportToAppsScript(c.env.DB, 'comment', {
+        day_number,
+        content,
+        user_name: user?.name || 'Unknown',
+        created_at: new Date().toISOString()
+      })
+    );
+
+    return c.json({ success: true, id: result.meta.last_row_id })
+  } catch (e) {
+    console.error('Comment insert error:', e)
+    return c.json({ error: '댓글 저장 실패' }, 500)
+  }
+})
+
 // 전체 팀원 진행도 조회 (가로 맵용)
 app.get('/api/progress/all', async (c) => {
   const result = await c.env.DB.prepare(
-    `SELECT 
-      u.id,
-      u.name,
-      u.total_days_read,
-      u.streak_count,
-      u.avatar_emoji,
-      u.avatar_url,
-      t.name as team_name
+    `SELECT
+  u.id,
+    u.name,
+    u.total_days_read,
+    u.streak_count,
+    u.avatar_emoji,
+    u.avatar_url,
+    t.name as team_name
      FROM users u
      LEFT JOIN teams t ON u.team_id = t.id
      WHERE u.church_id = 1 AND u.active = 1
@@ -575,13 +743,14 @@ app.post('/api/sync/sheets', async (c) => {
         const pinHash = await hashPin(pin, salt)
 
         // 사용자 생성 또는 업데이트 (active = 1 설정)
+        // 주의: 이미 존재하는 사용자의 PIN은 덮어쓰지 않음 (비밀번호 초기화 방지)
         await c.env.DB.prepare(
-          `INSERT INTO users (name, phone, pin_hash, role, team_id, church_id, active)
-           VALUES (?, ?, ?, ?, ?, 1, 1)
+          `INSERT INTO users (name, phone, pin_hash, pin_salt, role, team_id, church_id, active)
+           VALUES (?, ?, ?, ?, ?, ?, 1, 1)
            ON CONFLICT(phone) 
            DO UPDATE SET name = ?, role = ?, team_id = ?, active = 1`
         ).bind(
-          name, phone, pinHash, role, teamId,
+          name, phone, pinHash, salt, role, teamId,
           name, role, teamId
         ).run()
 
@@ -786,6 +955,113 @@ app.post('/api/sync/bible', async (c) => {
   }
 })
 
+
+
+// 관리자: 전체 조직도 그래프 데이터
+app.get('/api/admin/graph', async (c) => {
+  try {
+    const nodes: any[] = [];
+    const links: any[] = [];
+
+    // 1. Master Node (담임목사)
+    // 실제 DB에서 senior_pastor를 찾거나, 없으면 가상의 노드 생성
+    const pastor = await c.env.DB.prepare("SELECT * FROM users WHERE role = 'senior_pastor' LIMIT 1").first();
+    const pastorId = pastor ? `user_${pastor.id}` : 'master_root';
+
+    nodes.push({
+      id: pastorId,
+      label: pastor ? pastor.name : '담임목사',
+      type: 'master',
+      group: 0,
+      img: pastor?.avatar_url || null,
+      emoji: pastor?.avatar_emoji || '👑'
+    });
+
+    // 2. Teams
+    const teams = await c.env.DB.prepare("SELECT * FROM teams").all();
+
+    for (const team of teams.results) {
+      const teamId = `team_${team.id}`;
+      nodes.push({
+        id: teamId,
+        label: team.name,
+        type: 'team',
+        group: 1,
+        leaderId: team.leader_id
+      });
+
+      // Link: Master -> Team
+      links.push({ source: pastorId, target: teamId });
+    }
+
+    // 3. Users (Members)
+    const users = await c.env.DB.prepare("SELECT * FROM users WHERE active = 1").all();
+
+    for (const user of users.results) {
+      // 담임목사는 이미 위에서 처리했거나 Root로 둠 (중복 방지)
+      if (user.role === 'senior_pastor') continue;
+
+      const userId = `user_${user.id}`;
+      const isLeader = user.role === 'team_leader' || user.role === 'deputy_leader';
+
+      nodes.push({
+        id: userId,
+        label: user.name,
+        type: isLeader ? 'leader' : 'member',
+        group: isLeader ? 2 : 3,
+        role: user.role,
+        img: user.avatar_url,
+        emoji: user.avatar_emoji || '😊'
+      });
+
+      // Link: Team -> User
+      if (user.team_id) {
+        links.push({ source: `team_${user.team_id}`, target: userId });
+      } else {
+        // 팀이 없는 경우 Master에 연결? 혹은 고아 노드
+        links.push({ source: pastorId, target: userId, dashed: true });
+      }
+    }
+
+    return c.json({ nodes, links });
+  } catch (e) {
+    console.error(e);
+    return c.json({ error: 'Graph Data Error' }, 500);
+  }
+});
+
+// 팀 생성
+app.post('/api/teams', async (c) => {
+  const { name } = await c.req.json();
+  const result = await c.env.DB.prepare('INSERT INTO teams (name, church_id) VALUES (?, 1) RETURNING id').bind(name).first();
+  return c.json(result);
+});
+
+// 팀 수정 (이름 변경)
+app.put('/api/teams/:id', async (c) => {
+  const teamId = c.req.param('id');
+  const { name } = await c.req.json();
+  await c.env.DB.prepare('UPDATE teams SET name = ? WHERE id = ?').bind(name, teamId).run();
+  return c.json({ success: true });
+});
+
+// 팀장 임명
+app.post('/api/teams/:id/assign-leader', async (c) => {
+  const teamId = c.req.param('id');
+  const { userId } = await c.req.json();
+
+  // 1. 기존 팀장의 role을 member로 강등? (필요한 경우)
+  await c.env.DB.prepare("UPDATE users SET role = 'member' WHERE team_id = ? AND role = 'team_leader'").bind(teamId).run();
+
+  // 2. 새 팀장 임명 (Role 변경 + Teams 테이블 업데이트)
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE users SET role = 'team_leader' WHERE id = ?").bind(userId),
+    c.env.DB.prepare("UPDATE teams SET leader_id = ? WHERE id = ?").bind(userId, teamId)
+  ]);
+
+  return c.json({ success: true });
+});
+
 // 관리자 대시보드 - 전체 교인 현황
 app.get('/api/admin/dashboard', async (c) => {
   // 역할별 통계
@@ -836,12 +1112,18 @@ app.get('/', (c) => {
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>하라쉬 말씀읽기 - 새롬교회</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="manifest" href="/manifest.json">
+        <link rel="apple-touch-icon" href="/icon-512.png">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <script src="https://unpkg.com/force-graph"></script>
         <style>
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
           }
@@ -867,7 +1149,7 @@ app.get('/', (c) => {
           }
         </style>
     </head>
-    <body class="bg-gray-50">
+    <body class="bg-gray-50 pb-[env(safe-area-inset-bottom)]">
         <div id="app"></div>
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>

@@ -1,250 +1,33 @@
-# 하라쉬 말씀읽기 📖
+# 하라쉬 성경읽기
 
-**새롬교회 전교인 성경읽기 참여 프로그램**
+새롬교회 성경 읽기 프로그램
 
-## 🎯 프로젝트 개요
-- **교회명**: 새롬교회
-- **앱 이름**: 하라쉬 말씀읽기
-- **목표**: 하루 5장씩 성경을 읽으며 전교인이 함께 말씀으로 성장
-- **스타일**: 듀오링고 감성의 인터랙티브한 맵 기반 진행
+## 🚀 배포
 
-## 🌐 접속 URL
-- **개발 서버**: https://3000-i7rdou1uem2fco2f9aisu-8f57ffe2.sandbox.novita.ai
-- **테스트 계정**: test1@example.com / test1234 (담임목사 권한)
+**Live URL**: <https://YOUR_USERNAME.github.io/harash-bible-reading>
 
-## ✨ 핵심 기능
+## 기술 스택
 
-### 🗺️ 듀오링고 스타일 맵
-- **지그재그 경로**: 날짜별 노드가 세로 스크롤로 배치
-- **3가지 상태**:
-  - ✅ 완료 (녹색) - 이미 읽은 날
-  - 📖 현재 (보라색 펄스) - 오늘 읽을 차례
-  - 🔒 잠김 (회색) - 아직 열리지 않음
-- **팀원 위치 표시**: 같은 진행도의 팀원 아바타 표시
-- **클릭 가능**: 현재/완료 노드 클릭 시 말씀 읽기
+- **Frontend**: HTML, CSS, JavaScript, Tailwind CSS
+- **Backend**: Google Apps Script
+- **Database**: Google Sheets
+- **Hosting**: GitHub Pages
 
-### 📖 실제 성경 읽기
-- **개역개정 성경** 본문 표시
-- 절 번호와 함께 깔끔한 레이아웃
-- **읽기 계획**:
-  - 화요일: 역대하 27-31장
-  - 수요일: 역대하 32-36장
-- **완독 확인**: 하단 버튼으로 완독 체크
-- **🎵 음성 재생**: 플레이 버튼 (향후 TTS 연동)
+## 📝 설정
 
-### 👥 역할별 관리 시스템
-**6가지 역할**:
-1. **담임목사** - 전체 관리자 권한
-2. **부목사** - 전체 관리자 권한
-3. **교역자** - 전체 관리자 권한
-4. **담당팀장** - 소속 팀 관리
-5. **부팀장** - 소속 팀 관리
-6. **팀원** - 일반 사용자
+1. Google Sheets 생성
+2. Apps Script 배포
+3. `public/static/api-config.js`에 GAS URL 설정
+4. GitHub Pages 설정
 
-### 📊 Google Sheets 연동
-- **스프레드시트 ID**: 1HVxGsugqLzmHASSyCy7dF_ANGfXfe7wQqDVwej3SH3Q
-- **자동 동기화**: 관리자가 버튼 클릭으로 동기화
-- **교인 정보 관리**: 이름, 이메일, 역할, 팀 자동 생성/업데이트
+## 🔧 개발
 
-**Google Sheets 형식**:
-```
-A열: 이름
-B열: 이메일
-C열: 비밀번호 (초기 비밀번호)
-D열: 역할 (담임목사/부목사/교역자/담당팀장/부팀장/팀원)
-E열: 팀 이름
-```
-
-### 🎛️ 관리자 대시보드
-**담임목사/부목사/교역자 전용**:
-- ⚙️ Google Sheets 동기화 버튼
-- 📊 전체 교인 통계
-- 📈 역할별/팀별 통계
-- 👥 활동 현황
-
-### 👨‍👩‍👧‍👦 팀장 대시보드
-**담당팀장/부팀장 전용**:
-- 👥 팀원 목록 및 진행도
-- 📊 팀 평균 완독일수
-- 🔥 팀원별 Streak
-
-### 🔥 연속 읽기 (Streak)
-- 매일 완독 시 Streak 증가
-- 하루라도 놓치면 초기화
-- 불꽃 아이콘으로 표시
-
-### 🎉 완독 시스템
-- 말씀 읽기 후 완독 확인
-- 축하 애니메이션
-- 자동으로 다음 노드 활성화
-
-## 🏗️ 시스템 아키텍처
-
-### 기술 스택
-- **프론트엔드**: Vanilla JS + Tailwind CSS + FontAwesome
-- **백엔드**: Hono (Cloudflare Workers)
-- **데이터베이스**: Cloudflare D1 (SQLite)
-- **외부 연동**: Google Sheets API
-- **배포**: Cloudflare Pages
-
-### 데이터 모델
-```sql
--- 교회
-churches (id, name)
-
--- 팀
-teams (id, name, church_id, leader_id)
-
--- 사용자
-users (id, name, email, password_hash, role, team_id, streak_count, total_days_read)
-
--- 읽기 기록
-reading_logs (id, user_id, date, chapters_read, completed)
-
--- 성경 읽기 계획
-bible_reading_plan (id, day_number, week_day, book_name, start_chapter, end_chapter, date)
-
--- 성경 본문
-bible_texts (id, book_name, chapter, verse, text)
-
--- 배지
-badges, user_badges
-
--- 동기화 로그
-sync_logs (id, sync_type, status, message, synced_at)
-```
-
-## 📱 사용자 가이드
-
-### 일반 사용자 (팀원)
-1. **로그인** → 자동으로 맵 화면
-2. **맵 탐색** → 보라색 노드 (오늘) 확인
-3. **노드 클릭** → 오늘의 말씀 읽기
-4. **말씀 읽기** → 스크롤하며 읽기
-5. **완독 확인** → 하단 버튼 클릭
-6. **축하** → 다음 노드 활성화
-
-### 팀장/부팀장
-- 헤더의 **👥 아이콘** 클릭
-- 팀원 목록 및 진행도 확인
-- 팀 평균 통계 확인
-
-### 관리자 (담임목사/부목사/교역자)
-- 헤더의 **⚙️ 아이콘** 클릭
-- **Google Sheets 동기화**:
-  1. 스프레드시트를 **공개**로 설정
-  2. "지금 동기화" 버튼 클릭
-  3. 교인 데이터 자동 생성/업데이트
-- **전체 통계 확인**:
-  - 전체 교인 수
-  - 활동 중인 교인
-  - 평균 완독일수
-  - 역할별/팀별 순위
-
-## 🚀 개발 환경 설정
-
-### 로컬 개발
 ```bash
-# 빌드
-cd /home/user/webapp && npm run build
-
-# 서버 시작
-pm2 start ecosystem.config.cjs
-
-# 로그 확인
-pm2 logs harash-bible-reading --nostream
+# 로컬 테스트
+cd public
+python3 -m http.server 8000
 ```
 
-### 데이터베이스 관리
-```bash
-# 마이그레이션
-npm run db:migrate:local
+## 📄 라이선스
 
-# 시드 데이터
-npm run db:seed
-
-# 초기화
-npm run db:reset
-```
-
-## 📋 Google Sheets 설정 가이드
-
-### 1. 스프레드시트 준비
-1. Google Sheets에서 새 스프레드시트 생성
-2. 첫 번째 행에 헤더 작성:
-   ```
-   이름 | 이메일 | 비밀번호 | 역할 | 팀 이름
-   ```
-3. 데이터 예시:
-   ```
-   김목사 | pastor@example.com | pastor123 | 담임목사 | 
-   이집사 | lee@example.com | lee1234 | 팀원 | 청년부
-   박권사 | park@example.com | park1234 | 담당팀장 | 장년부
-   ```
-
-### 2. 공개 설정
-1. 우측 상단 "공유" 버튼 클릭
-2. "일반 액세스" → "링크가 있는 모든 사용자"
-3. 권한: "뷰어" (읽기 전용)
-4. 완료
-
-### 3. 스프레드시트 ID 확인
-URL에서 ID 복사:
-```
-https://docs.google.com/spreadsheets/d/[이부분이ID]/edit
-```
-
-### 4. 앱에서 동기화
-1. 관리자로 로그인
-2. ⚙️ 아이콘 → 관리자 패널
-3. "지금 동기화" 버튼 클릭
-4. 성공 메시지 확인
-
-## 🎨 UI 특징
-
-### 색상 테마
-- **메인 그라데이션**: 보라색 → 인디고
-- **포인트**: 보라(#9333ea), 주황(Streak)
-- **배경**: 밝은 회색
-
-### 애니메이션
-- 펄스 효과 (현재 노드)
-- 호버 확대 효과
-- 완독 축하 애니메이션
-- 부드러운 페이지 전환
-
-## 🔄 다음 개발 예정
-
-### 우선순위 높음
-- [ ] TTS 음성 재생 (Web Speech API)
-- [ ] 전체 성경 데이터 추가
-- [ ] 배지 자동 부여 시스템
-- [ ] 응원 메시지 기능
-
-### 우선순위 중간
-- [ ] PWA 설정 (앱 설치)
-- [ ] 푸시 알림 (매일 리마인더)
-- [ ] 주간/월간 통계 그래프
-- [ ] 성경 구절 공유 기능
-
-### 추가 아이디어
-- [ ] 개인별 읽기 계획 커스터마이징
-- [ ] 팀별 목표 설정
-- [ ] 특별 이벤트 배지
-- [ ] 오프라인 지원
-
-## 📝 개발 노트
-
-### 주요 변경사항
-- **v1.0** (2026-01-20): 초기 버전, 기본 읽기 시스템
-- **v2.0** (2026-01-21): 듀오링고 스타일 맵, 실제 성경 읽기
-- **v3.0** (2026-01-21): Google Sheets 연동, 역할별 관리
-
-### 배포 상태
-- ✅ 로컬 개발 환경 완료
-- ⏳ 프로덕션 배포 대기
-- ⏳ Google Sheets API 키 설정 필요 (선택사항)
-
----
-
-**Made with ❤️ for 새롬교회**
+MIT
