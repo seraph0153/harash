@@ -123,37 +123,40 @@ async function loadUser() {
     try {
       currentUser = JSON.parse(stored);
 
-      // 🚀 OPTIMISTIC LOAD: 즉시 화면 진입 (네트워크 대기 없음)
+      // 🚀 OPTIMISTIC LOAD: 캐시된 플랜 로드 필수
+      const cachedPlan = localStorage.getItem('harash_cache_plan');
+      if (cachedPlan) {
+        try { biblePlan = JSON.parse(cachedPlan); } catch (e) { }
+      }
+
       const lastDay = localStorage.getItem('harash_last_reading_day');
 
-      // 화면 렌더링 먼저 수행
-      if (lastDay) {
-        // lastDay가 있으면 readingScreen으로 가되, 
-        // 데이터가 로드 안 된 상태일 수 있으므로 showReadingScreen 내부에서 처리됨
+      // 화면 렌더링: 읽던 페이지가 있고, 해당 플랜 데이터가 실제로 존재할 때만 이동
+      // (데이터가 없는데 이동하면 '데이터 없음' 에러 뜸)
+      if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay))) {
         showReadingScreen(parseInt(lastDay));
       } else {
         showMapScreen();
       }
 
-      // ⚡️ 백그라운드 세션 검증 (사용자 차단 0초)
+      // ⚡️ 백그라운드 데이터 갱신 (Session & Plan)
+      // 1. 유저 세션
       apiRequest('getUserInfo', { userId: currentUser.id })
         .then(res => {
           currentUser = { ...currentUser, ...res.data };
-          // 테스트 계정 권한 부여
           if (currentUser.phone === '01063341270') currentUser.role = 'senior_pastor';
           localStorage.setItem('harash_user', JSON.stringify(currentUser));
-
-          // 정보 갱신 후, 만약 MapScreen을 보고 있다면(변수 체크 불가능하니) 
-          // 필요시 재렌더링 할 수 있으나, showMapScreen 내부 SWR이 이미 돌고 있으므로 중복 호출 불필요.
         })
         .catch(e => {
           console.warn("Background session check failed:", e);
-          // 세션 만료가 명확한 에러(401 등)가 아니면, 오프라인일 수 있으므로 로그아웃 안 함.
-          // 만약 명시적 'Invalid Session' 에러라면 로그아웃 처리
-          if (e.message && e.message.includes('Session')) {
-            logout();
-          }
+          if (e.message && e.message.includes('Session')) logout();
         });
+
+      // 2. 성경 플랜 최신화 (백그라운드)
+      fetchBiblePlan().then(() => {
+        // 만약 readingScreen에 있는데 데이터가 업데이트 되었다면? 
+        // 복잡해지니 일단 두되, MapScreen은 내부적으로 알아서 갱신함.
+      });
 
     } catch (e) {
       console.error("Local user parse fail:", e);
