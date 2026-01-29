@@ -629,9 +629,16 @@ function setReadingStyle(type, value) {
     if (display) display.textContent = value + 'px';
 
   } else if (type === 'font') {
-    // Direct Style for Fonts
-    container.style.fontFamily = value;
-    localStorage.setItem('harash_font_family', value);
+    // Add visual feedback animation
+    container.style.transition = 'font-family 0.3s ease, opacity 0.2s ease';
+    container.style.opacity = '0.7';
+
+    setTimeout(() => {
+      // Direct Style for Fonts
+      container.style.fontFamily = value;
+      container.style.opacity = '1';
+      localStorage.setItem('harash_font_family', value);
+    }, 100);
 
     // Update Buttons (Font - Dropdown Style)
     document.querySelectorAll('.setting-btn-font').forEach(btn => {
