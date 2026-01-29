@@ -143,6 +143,16 @@ async function apiRequest(action, payload = {}) {
 // APP LOGIC
 // ----------------------------------------------------
 
+// 🔙 Browser Back Button Handling (SPA Navigation)
+window.addEventListener('popstate', (event) => {
+  // If state is null or has view='map', go to map
+  if (!event.state || event.state.view === 'map') {
+    showMapScreen(false); // Make sure showMapScreen accepts a 'pushHistory' flag (default true)
+  } else if (event.state.view === 'reading') {
+    showReadingScreen(event.state.day, false);
+  }
+});
+
 async function loadUser() {
   const stored = localStorage.getItem('harash_user');
   if (stored) {
@@ -157,13 +167,17 @@ async function loadUser() {
 
       const lastDay = localStorage.getItem('harash_last_reading_day');
 
-      // 화면 렌더링: 읽던 페이지가 있고, 해당 플랜 데이터가 실제로 존재할 때만 이동
-      // (데이터가 없는데 이동하면 '데이터 없음' 에러 뜸)
+      // 화면 렌더링
       if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay))) {
-        showReadingScreen(parseInt(lastDay));
+        // Initial load replaces state instead of push
+        history.replaceState({ view: 'reading', day: parseInt(lastDay) }, '', '#reading');
+        showReadingScreen(parseInt(lastDay), false);
       } else {
-        showMapScreen();
+        history.replaceState({ view: 'map' }, '', '#map');
+        showMapScreen(false);
       }
+
+      // ... (Rest of background sync logic remains same)
 
       // ⚡️ 백그라운드 데이터 갱신 (Session & Plan)
       // 1. 유저 세션
@@ -321,7 +335,15 @@ function logout() {
   showLoginScreen();
 }
 
-async function showMapScreen() {
+// -----------------------------------------------------------
+// VIEW CONTROLLERS
+// -----------------------------------------------------------
+
+async function showMapScreen(pushHistory = true) {
+  if (pushHistory) {
+    history.pushState({ view: 'map' }, '', '#map');
+  }
+
   localStorage.removeItem('harash_last_reading_day');
   const app = document.getElementById('app');
 
@@ -487,6 +509,288 @@ async function showMapScreen() {
       alert("데이터 로드 실패. 네트워크를 확인해주세요.");
     }
   }
+}
+
+function renderHorizontalMap(todayDateStr) {
+  if (!todayDateStr) todayDateStr = new Date().toISOString().split('T')[0];
+
+  const formatSimpleDate = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+  };
+
+  const formatRangeText = (text) => {
+    if (!text) return '';
+    return text.replace(/장/g, '').trim();
+  };
+
+  // 오늘 날짜 인덱스 찾기
+  let todayIndex = biblePlan.findIndex(day => day.date === todayDateStr);
+
+  // 오늘 날짜가 없으면 (범위 밖 등), 적절한 위치 찾기
+  if (todayIndex === -1) {
+    if (biblePlan.length > 0) {
+      if (todayDateStr < biblePlan[0].date) todayIndex = 0;
+      else todayIndex = biblePlan.length - 1;
+    } else {
+      todayIndex = 0;
+    }
+  }
+
+  // 앞뒤 3일 계산 (총 7일)
+  const start = Math.max(0, todayIndex - 3);
+  const end = Math.min(biblePlan.length, todayIndex + 4); // slice는 end 미포함이므로 +4
+  const visibleDays = biblePlan.slice(start, end);
+
+  // 빈 데이터 처리
+  if (visibleDays.length === 0) return '<div class="text-gray-400 text-sm">일정을 불러올 수 없습니다.</div>';
+
+  return visibleDays.map(day => {
+    let isPast = false;
+    let isToday = false;
+
+    if (day.date) {
+      isPast = day.date < todayDateStr;
+      isToday = day.date === todayDateStr;
+    }
+
+    const visualDone = isPast || (day.day_number <= currentUser.total_days_read);
+
+    let circleClass = '';
+    if (isToday) {
+      // 🎯 TODAY HIGHLIGHT: 더 눈에 띄게 (scale-125, shadow-xl)
+      circleClass = 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white ring-4 ring-purple-200 ring-offset-2 scale-125 shadow-xl z-20 font-extrabold';
+    } else if (visualDone) {
+      circleClass = 'bg-purple-50 border-2 border-purple-200 text-purple-400';
+    } else {
+      circleClass = 'bg-gray-50 border-2 border-gray-100 text-gray-300';
+    }
+
+    const idAttr = isToday ? 'id="today-marker"' : '';
+
+    return `
+            <div class="flex flex-col items-center space-y-3 cursor-pointer min-w-[70px] pt-2" onclick="showReadingScreen(${day.day_number})">
+                <div class="text-xs font-semibold ${isToday ? 'text-purple-600' : 'text-gray-400'} tracking-tight">${formatSimpleDate(day.date)}</div>
+                <div ${idAttr} class="w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${circleClass}">
+                    ${day.day_number}
+                </div>
+                <div class="text-[11px] font-medium ${isToday ? 'text-purple-700 font-bold' : 'text-gray-500'} text-center px-1 whitespace-nowrap overflow-hidden max-w-[90px] text-ellipsis">
+                    ${formatRangeText(day.display_text)}
+                </div>
+            </div>
+        `;
+  }).join('');
+}
+
+function getRoleKorean(role) {
+  const map = { senior_pastor: '담임목사', team_leader: '팀장', member: '팀원' };
+  return map[role] || '성도';
+}
+
+async function showReadingScreen(dayNumber, pushHistory = true) {
+  if (pushHistory) {
+    history.pushState({ view: 'reading', day: dayNumber }, '', '#reading');
+  }
+
+  localStorage.setItem('harash_last_reading_day', dayNumber);
+  const plan = biblePlan.find(d => d.day_number === dayNumber);
+
+  if (!plan) {
+    alert("해당 일차의 데이터를 찾을 수 없습니다.");
+    return;
+  }
+
+  const app = document.getElementById('app');
+
+  // 로딩 표시
+  app.innerHTML = `
+        <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div class="text-center">
+                <div class="animate-spin text-4xl mb-4">📖</div>
+                <div class="text-gray-500">말씀을 불러오고 있습니다...</div>
+                <div class="text-sm text-gray-400 mt-2">${plan.display_text || ''}</div>
+            </div>
+        </div>
+    `;
+
+  // 성경 데이터 로드 (한 번만)
+  await loadBibleData();
+
+  // 본문 생성 로직
+  let contentHTML = '';
+
+  // plan.ranges가 있으면 사용, 없으면(구버전 호환) 단일 필드 사용
+  const ranges = plan.ranges || [
+    { book: plan.book_name, start: plan.start_chapter, end: plan.end_chapter }
+  ];
+
+  if (bibleData) {
+    for (const range of ranges) {
+      // 책 이름 매핑: 역대상 -> 1ch -> 대상
+      // 1. FullName -> Code (역대상 -> 1ch)
+      const code = BIBLE_BOOK_CODES[range.book];
+      let bookAbbr = '';
+
+      // 2. Code -> ShortName (1ch -> 대상)
+      if (code) {
+        // BIBLE_BOOK_CODES에서 해당 code를 가진 키 중 가장 짧은 것을 찾음 (단, 원본과 다를 수 있음)
+        // 예: '역대상': '1ch', '대상': '1ch' -> '대상' 선택
+        const potentialKeys = Object.keys(BIBLE_BOOK_CODES).filter(key => BIBLE_BOOK_CODES[key] === code);
+        // 가장 짧은 키 선택 (대부분 약어는 1~2글자)
+        bookAbbr = potentialKeys.reduce((a, b) => a.length <= b.length ? a : b);
+      } else {
+        // 매핑 실패 시 원본 사용 (혹시 json이 풀네임일 수도 있으니)
+        bookAbbr = range.book;
+      }
+
+      // 책 제목 섹션
+      contentHTML += `
+                <div class="mb-8 border-b pb-2 mt-4">
+                    <h2 class="text-2xl font-bold text-gray-800">${range.book}</h2>
+                </div>
+            `;
+
+      // 장별 본문
+      for (let ch = range.start; ch <= range.end; ch++) {
+        contentHTML += `<div class="mb-6">
+                    <h3 class="text-xl font-semibold text-purple-700 mb-3">${ch}장</h3>
+                    <div class="space-y-2 text-gray-700 leading-relaxed text-lg font-serif">`;
+
+        let verseCount = 0;
+        // 절 반복 (1절부터 시작해서 데이터가 없을 때까지)
+        for (let v = 1; v <= 200; v++) { // 200절 안전장치
+          const key = `${bookAbbr}${ch}:${v}`;
+          const text = bibleData[key];
+
+          if (!text) {
+            // 첫 절부터 없으면, 혹시 약어가 틀렸나? -> 그래도 없으면 break
+            if (v === 1) {
+              // console.log(`Missing: ${key}`);
+            }
+            break;
+          }
+
+          // 텍스트 있음
+          contentHTML += `
+                        <p class="relative pl-6">
+                            <span class="absolute left-0 top-1 text-xs text-gray-400 font-sans select-none">${v}</span>
+                            ${text}
+                        </p>
+                    `;
+          verseCount++;
+        }
+
+        if (verseCount === 0) {
+          contentHTML += `<p class="italic text-gray-400">말씀을 불러올 수 없습니다. (${bookAbbr}${ch}장)</p>`;
+        }
+
+        contentHTML += `</div></div>`;
+      }
+    }
+  } else {
+    const logs = window.bibleDebugLogs ? window.bibleDebugLogs.join('<br>') : 'No logs';
+    contentHTML = `
+      <div class="text-center py-20 px-4">
+        <div class="text-4xl mb-4">😢</div>
+        <p class="text-gray-800 font-bold mb-2">성경 데이터 로드 실패</p>
+        <div class="bg-gray-100 text-left text-xs p-4 rounded mb-6 font-mono text-gray-600 overflow-x-auto whitespace-nowrap">
+            ${logs}
+        </div>
+        <p class="text-gray-500 text-sm mb-6">위 로그를 캡처해서 개발자에게 보내주세요.</p>
+        <button onclick="window.location.reload()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-purple-700 transition">
+          🔄 다시 시도
+        </button>
+      </div>
+    `;
+  }
+
+  app.innerHTML = `
+        <div class="min-h-screen bg-gray-50">
+            <div class="bg-purple-600 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
+                <button onclick="showMapScreen()" class="hover:bg-purple-700 p-2 rounded"><i class="fas fa-arrow-left"></i> 목록</button>
+                <div class="font-bold truncate px-2 text-sm">${plan.display_text}</div>
+                <div class="w-10"></div>
+            </div>
+            
+            <div class="p-4 max-w-3xl mx-auto bg-white min-h-screen shadow-sm">
+                ${contentHTML}
+                
+                <div class="mt-12 mb-20 p-6 bg-purple-50 rounded-xl border border-purple-100 text-center">
+                    <p class="text-purple-800 font-bold mb-2">오늘의 말씀을 모두 읽으셨나요?</p>
+                    <p class="text-sm text-gray-600 mb-6">완료 버튼을 누르면 진도표에 기록됩니다.</p>
+                    <button onclick="completeReading(${dayNumber})" 
+                        class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:scale-105 transition-transform">
+                        ✅ 읽기 완료
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+if (!isRendered) {
+  setTimeout(() => {
+    const todayEl = document.getElementById('today-marker');
+    if (todayEl) {
+      todayEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+  }, 100);
+}
+
+isRendered = true;
+  };
+
+// 1. 캐시 있으면 즉시 렌더링
+if (cachedPlan && cachedUsers) {
+  try {
+    const parsedPlan = JSON.parse(cachedPlan);
+    const parsedUsers = JSON.parse(cachedUsers);
+    renderUI(parsedPlan, parsedUsers, currentUser);
+  } catch (e) {
+    console.error("Cache parsing error", e);
+  }
+} else {
+  app.innerHTML = `
+            <div class="min-h-screen flex items-center justify-center bg-gray-50">
+                <div class="text-center">
+                    <div class="animate-spin text-4xl mb-4 text-purple-600">⏳</div>
+                    <p class="text-gray-500">데이터를 불러오는 중입니다...</p>
+                </div>
+            </div>
+        `;
+}
+
+// 2. 백그라운드 갱신
+try {
+  const [planRes, usersRes, progressRes] = await Promise.all([
+    apiRequest('getBiblePlan'),
+    apiRequest('getAllUsers'),
+    apiRequest('getUserProgress', { userId: currentUser.id })
+  ]);
+
+  if (planRes.status === 'success') {
+    localStorage.setItem('harash_cache_plan', JSON.stringify(planRes.data));
+    biblePlan = planRes.data;
+  }
+  if (usersRes.status === 'success') {
+    localStorage.setItem('harash_cache_users', JSON.stringify(usersRes.data));
+    allUsers = usersRes.data;
+  }
+
+  let freshProgress = null;
+  if (progressRes.status === 'success') {
+    freshProgress = progressRes.data;
+  }
+
+  renderUI(biblePlan, allUsers, freshProgress);
+
+} catch (e) {
+  console.warn("데이터 백그라운드 갱신 실패:", e);
+  if (!isRendered) {
+    alert("데이터 로드 실패. 네트워크를 확인해주세요.");
+  }
+}
 }
 
 function renderHorizontalMap(todayDateStr) {
