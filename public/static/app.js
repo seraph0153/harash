@@ -665,6 +665,41 @@ function initSettingsUI(currentSize, currentFont, currentHeight) {
   setReadingStyle('height', currentHeight);
 }
 
+// ============================================
+// 📖 BIBLE REFERENCE PARSER
+// ============================================
+/**
+ * Parses complex Bible references with multiple books/ranges.
+ * Example: "에스더 8-10장, 욥기 1-3장" => [{book:'에스더', start:8, end:10}, {book:'욥기', start:1, end:3}]
+ */
+function parseComplexBibleReference(text) {
+  if (!text) return [];
+
+  // Split by comma
+  const parts = text.split(',').map(s => s.trim()).filter(Boolean);
+  const ranges = [];
+
+  for (const part of parts) {
+    // Match pattern: "BookName StartChapter-EndChapter장" or "BookName Chapter장"
+    // Examples: "에스더 8-10장", "욥기 1-3장", "창세기 1장"
+    const match = part.match(/^(.+?)\s+(\d+)(?:-(\d+))?장?$/);
+
+    if (match) {
+      const bookName = match[1].trim();
+      const startChapter = parseInt(match[2]);
+      const endChapter = match[3] ? parseInt(match[3]) : startChapter;
+
+      ranges.push({
+        book: bookName,
+        start: startChapter,
+        end: endChapter
+      });
+    }
+  }
+
+  return ranges;
+}
+
 async function showReadingScreen(dayNumber, pushHistory = true) {
   if (pushHistory) {
     history.pushState({ view: 'reading', day: dayNumber }, '', '#reading');
@@ -704,9 +739,19 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   // 본문 생성 로직
   let contentHTML = '';
 
-  const ranges = plan.ranges || [
-    { book: plan.book_name, start: plan.start_chapter, end: plan.end_chapter }
-  ];
+  // Parse ranges from display_text if not pre-parsed
+  let ranges = plan.ranges;
+  if (!ranges || ranges.length === 0) {
+    // Try parsing from display_text (e.g., "에스더 8-10장, 욥기 1-3장")
+    ranges = parseComplexBibleReference(plan.display_text);
+
+    // Fallback to legacy single-range format
+    if (ranges.length === 0 && plan.book_name) {
+      ranges = [
+        { book: plan.book_name, start: plan.start_chapter, end: plan.end_chapter }
+      ];
+    }
+  }
 
   if (bibleData) {
     for (const range of ranges) {
