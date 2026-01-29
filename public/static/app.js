@@ -122,25 +122,41 @@ async function loadUser() {
   if (stored) {
     try {
       currentUser = JSON.parse(stored);
-      // 로그인 검증 및 최신 데이터 로드
-      const res = await apiRequest('getUserInfo', { userId: currentUser.id });
-      currentUser = { ...currentUser, ...res.data };
 
-      // 사용자 권한 강제 업데이트 (테스트 계정)
-      if (currentUser.phone === '01063341270') currentUser.role = 'senior_pastor';
-
-      localStorage.setItem('harash_user', JSON.stringify(currentUser));
-
-      await fetchBiblePlan();
-
+      // 🚀 OPTIMISTIC LOAD: 즉시 화면 진입 (네트워크 대기 없음)
       const lastDay = localStorage.getItem('harash_last_reading_day');
-      if (lastDay) showReadingScreen(parseInt(lastDay));
-      else showMapScreen();
+
+      // 화면 렌더링 먼저 수행
+      if (lastDay) {
+        // lastDay가 있으면 readingScreen으로 가되, 
+        // 데이터가 로드 안 된 상태일 수 있으므로 showReadingScreen 내부에서 처리됨
+        showReadingScreen(parseInt(lastDay));
+      } else {
+        showMapScreen();
+      }
+
+      // ⚡️ 백그라운드 세션 검증 (사용자 차단 0초)
+      apiRequest('getUserInfo', { userId: currentUser.id })
+        .then(res => {
+          currentUser = { ...currentUser, ...res.data };
+          // 테스트 계정 권한 부여
+          if (currentUser.phone === '01063341270') currentUser.role = 'senior_pastor';
+          localStorage.setItem('harash_user', JSON.stringify(currentUser));
+
+          // 정보 갱신 후, 만약 MapScreen을 보고 있다면(변수 체크 불가능하니) 
+          // 필요시 재렌더링 할 수 있으나, showMapScreen 내부 SWR이 이미 돌고 있으므로 중복 호출 불필요.
+        })
+        .catch(e => {
+          console.warn("Background session check failed:", e);
+          // 세션 만료가 명확한 에러(401 등)가 아니면, 오프라인일 수 있으므로 로그아웃 안 함.
+          // 만약 명시적 'Invalid Session' 에러라면 로그아웃 처리
+          if (e.message && e.message.includes('Session')) {
+            logout();
+          }
+        });
 
     } catch (e) {
-      console.warn("Session check failed, retry login", e);
-      // 오프라인이거나 세션 만료 시에도 일단 로컬 데이터로 진입 시도? 
-      // 아니면 로그아웃. 안전하게 로그아웃.
+      console.error("Local user parse fail:", e);
       logout();
     }
   } else {
