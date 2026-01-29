@@ -4,7 +4,7 @@
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
 // ⚡️ 중요: 배포한 Google Apps Script 웹 앱 URL을 여기에 넣으세요!
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxAbz8i21jJKnxub6G_tnzGsrx_heDu7BcHNxBy0d-jPLrI6rsWVuTSalsUptzjdVjY/exec";
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxboHsJQdu1lYTbOsB4VB6mCiNZc2o5rMIkAdjliAaqasd2vwwb2fLMNWiwq2zX6RdZ/exec";
 
 // 전역 상태
 let currentUser = null;
