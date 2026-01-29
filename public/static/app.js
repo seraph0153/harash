@@ -611,14 +611,14 @@ function setReadingStyle(type, value) {
     container.classList.add(value);
     localStorage.setItem('harash_font_size', value);
 
-    // Update Buttons
+    // Update Buttons (Segmented Control Style)
     document.querySelectorAll('.setting-btn-size').forEach(btn => {
       if (btn.dataset.value === value) {
-        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
-        btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-200');
+        btn.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+        btn.classList.remove('text-gray-500');
       } else {
-        btn.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
-        btn.classList.add('bg-white', 'text-gray-700', 'border-gray-200');
+        btn.classList.remove('bg-white', 'shadow-sm', 'text-gray-900');
+        btn.classList.add('text-gray-500');
       }
     });
 
@@ -627,14 +627,14 @@ function setReadingStyle(type, value) {
     container.style.fontFamily = value;
     localStorage.setItem('harash_font_family', value);
 
-    // Update Buttons
+    // Update Buttons (Card Style)
     document.querySelectorAll('.setting-btn-font').forEach(btn => {
       if (btn.dataset.value === value) {
-        btn.classList.add('ring-2', 'ring-purple-500', 'bg-purple-50');
-        btn.classList.remove('bg-gray-50');
+        btn.classList.add('border-purple-500', 'bg-purple-50', 'ring-1', 'ring-purple-500', 'text-purple-900');
+        btn.classList.remove('border-gray-100', 'bg-white', 'text-gray-500');
       } else {
-        btn.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-50');
-        btn.classList.add('bg-gray-50');
+        btn.classList.remove('border-purple-500', 'bg-purple-50', 'ring-1', 'ring-purple-500', 'text-purple-900');
+        btn.classList.add('border-gray-100', 'bg-white', 'text-gray-500');
       }
     });
 
@@ -762,96 +762,105 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
     `;
   }
 
-  // Render Skeleton
+  // Render Skeleton (Compact & Sophisticated UI)
   app.innerHTML = `
         <div class="min-h-screen bg-gray-50 pb-safe">
-            <!-- Header (Compact) -->
-            <div class="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 text-gray-800 p-3 sticky top-0 z-50 flex justify-between items-center shadow-sm border-b border-gray-100 h-14">
-                <button onclick="showMapScreen()" class="hover:bg-gray-100 p-2 rounded-full transition-colors w-10 h-10 flex items-center justify-center"><i class="fas fa-arrow-left text-lg"></i></button>
-                <div class="font-bold truncate px-2 text-sm">${plan.display_text}</div>
-                <button onclick="toggleSettings()" class="bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors border border-gray-200 text-gray-600 w-9 h-9 flex items-center justify-center">
-                    <i class="fas fa-font text-sm"></i>
-                </button>
+            <!-- Header (Floating & Transparent) -->
+            <div class="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300">
+                <div class="flex justify-between items-center h-14 px-3 max-w-xl mx-auto">
+                    <button onclick="showMapScreen()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-800">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </button>
+                    <span class="font-bold text-sm text-gray-800 truncate px-2">${plan.display_text}</span>
+                    <button onclick="toggleSettings()" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-purple-600 hover:border-purple-200 transition-all">
+                        <i class="fas fa-font text-sm"></i>
+                    </button>
+                </div>
             </div>
             
             <!-- Content -->
-            <div class="max-w-xl mx-auto bg-white min-h-screen shadow-sm">
-                <!-- Dynamic Style Wrapper -->
-                <div id="bible-content-wrapper" class="p-4 text-gray-700 transition-all duration-300">
+            <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen"> 
+                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative">
                     ${contentHTML}
                 </div>
                 
-                <div class="mt-12 mb-20 py-8 text-center px-6">
-                    <p class="text-purple-900 font-bold mb-2 text-base">오늘의 말씀 읽기 완료</p>
+                <div class="mt-16 py-8 text-center px-4">
+                    <p class="text-purple-900/60 font-medium mb-3 text-sm">오늘의 말씀 읽기 완료</p>
                     <button onclick="completeReading(${dayNumber})" 
-                        class="w-full max-w-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl font-bold text-base shadow-lg hover:shadow-xl active:scale-95 transition-all">
+                        class="w-full max-w-xs bg-gray-900 text-white py-4 rounded-2xl font-bold text-base shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all">
                         ✅ 아멘! 읽었습니다
                     </button>
                 </div>
             </div>
             
-            <!-- Settings Modal (Compact & Clean) -->
-            <div id="settings-modal" class="hidden fixed inset-0 z-[60]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                <div class="fixed inset-0 bg-black/40 transition-opacity backdrop-blur-[2px]" onclick="toggleSettings()"></div>
+            <!-- Settings Modal (Compact Modern) -->
+            <div id="settings-modal" class="hidden fixed inset-0 z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <!-- Backdrop -->
+                <div class="fixed inset-0 bg-black/20 backdrop-blur-[1px] transition-opacity" onclick="toggleSettings()"></div>
 
-                <div class="fixed inset-x-0 bottom-0 z-10 w-full bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transform transition-transform p-5 pb-8 safe-area-bottom">
-                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-base font-bold text-gray-900">읽기 설정</h3>
-                        <button onclick="toggleSettings()" class="bg-gray-100 rounded-full p-1.5 text-gray-500 hover:text-gray-900 w-8 h-8 flex items-center justify-center">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="space-y-6">
-                        <!-- 1. Font Family -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">글꼴</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="setReadingStyle('font', '\'Gowun Batang\', serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Gowun Batang', serif">
-                                    <span class="text-lg mb-1" style="font-family: 'Gowun Batang', serif">고운바탕</span>
-                                    <span class="text-[10px] text-gray-400">명조체 감성</span>
+                <!-- Drawer -->
+                <div class="fixed inset-x-0 bottom-0 z-10 w-full bg-white/95 backdrop-blur-xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform transition-transform duration-300 ease-out safe-area-bottom border-t border-white/50">
+                     
+                     <!-- Handle -->
+                     <div class="w-full flex justify-center pt-3 pb-1" onclick="toggleSettings()">
+                        <div class="w-12 h-1.5 bg-gray-200 rounded-full"></div>
+                     </div>
+
+                     <div class="px-6 pb-10 pt-4 space-y-7">
+                        
+                        <!-- 1. Fonts (Horizontal Scroll) -->
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Typography</label>
+                            <div class="flex space-x-3 overflow-x-auto no-scrollbar pb-1 -mx-6 px-6 snap-x">
+                                <button onclick="setReadingStyle('font', '\'Gowun Batang\', serif')" class="setting-btn-font flex-shrink-0 snap-start w-[5.5rem] h-20 rounded-2xl border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95" data-value="'Gowun Batang', serif">
+                                    <span class="text-xl leading-none pt-1" style="font-family: 'Gowun Batang', serif">가</span>
+                                    <span class="text-[10px] text-gray-400 font-medium mt-1">고운바탕</span>
                                 </button>
-                                <button onclick="setReadingStyle('font', '\'Gowun Dodum\', sans-serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Gowun Dodum', sans-serif">
-                                    <span class="text-lg mb-1" style="font-family: 'Gowun Dodum', sans-serif">고운돋움</span>
-                                    <span class="text-[10px] text-gray-400">깔끔한 느낌</span>
+                                <button onclick="setReadingStyle('font', '\'Gowun Dodum\', sans-serif')" class="setting-btn-font flex-shrink-0 snap-start w-[5.5rem] h-20 rounded-2xl border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95" data-value="'Gowun Dodum', sans-serif">
+                                    <span class="text-xl leading-none pt-1" style="font-family: 'Gowun Dodum', sans-serif">가</span>
+                                    <span class="text-[10px] text-gray-400 font-medium mt-1">고운돋움</span>
                                 </button>
-                                <button onclick="setReadingStyle('font', '\'Noto Serif KR\', serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Noto Serif KR', serif">
-                                    <span class="text-lg mb-1" style="font-family: 'Noto Serif KR', serif">본문명조</span>
-                                    <span class="text-[10px] text-gray-400">신문/책 스타일</span>
+                                <button onclick="setReadingStyle('font', '\'Noto Serif KR\', serif')" class="setting-btn-font flex-shrink-0 snap-start w-[5.5rem] h-20 rounded-2xl border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95" data-value="'Noto Serif KR', serif">
+                                    <span class="text-xl leading-none pt-1" style="font-family: 'Noto Serif KR', serif">가</span>
+                                    <span class="text-[10px] text-gray-400 font-medium mt-1">본문명조</span>
                                 </button>
-                                <button onclick="setReadingStyle('font', '\'Noto Sans KR\', sans-serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Noto Sans KR', sans-serif">
-                                    <span class="text-lg mb-1" style="font-family: 'Noto Sans KR', sans-serif">본문고딕</span>
-                                    <span class="text-[10px] text-gray-400">현대적인 느낌</span>
+                                <button onclick="setReadingStyle('font', '\'Noto Sans KR\', sans-serif')" class="setting-btn-font flex-shrink-0 snap-start w-[5.5rem] h-20 rounded-2xl border border-gray-100 bg-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95" data-value="'Noto Sans KR', sans-serif">
+                                    <span class="text-xl leading-none pt-1" style="font-family: 'Noto Sans KR', sans-serif">가</span>
+                                    <span class="text-[10px] text-gray-400 font-medium mt-1">본문고딕</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 2. Font Size -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">글자 크기</label>
-                            <div class="flex bg-gray-100 p-1 rounded-xl">
-                                <button onclick="setReadingStyle('size', 'text-sm')" class="setting-btn-size flex-1 py-2 rounded-lg text-xs font-medium border border-transparent transition-all" data-value="text-sm">작게</button>
-                                <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size flex-1 py-2 rounded-lg text-sm font-medium border border-transparent transition-all" data-value="text-base">보통</button>
-                                <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size flex-1 py-2 rounded-lg text-base font-medium border border-transparent transition-all" data-value="text-xl">크게</button>
-                                <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size flex-1 py-2 rounded-lg text-lg font-medium border border-transparent transition-all" data-value="text-2xl">더크게</button>
+                        <!-- 2. Controls Grid -->
+                        <div class="grid grid-cols-1 gap-6">
+                            <!-- Size -->
+                            <div class="space-y-3">
+                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Size</label>
+                                <div class="bg-gray-100/80 p-1.5 rounded-2xl flex relative">
+                                    <button onclick="setReadingStyle('size', 'text-sm')" class="setting-btn-size flex-1 py-2.5 rounded-xl text-xs font-bold transition-all z-10 text-gray-500" data-value="text-sm">작게</button>
+                                    <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size flex-1 py-2.5 rounded-xl text-sm font-bold transition-all z-10 text-gray-500" data-value="text-base">보통</button>
+                                    <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size flex-1 py-2.5 rounded-xl text-base font-bold transition-all z-10 text-gray-500" data-value="text-xl">크게</button>
+                                    <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size flex-1 py-2.5 rounded-xl text-lg font-bold transition-all z-10 text-gray-500" data-value="text-2xl">더크게</button>
+                                </div>
+                            </div>
+
+                            <!-- Line Height -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-end px-1">
+                                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Line Spacing</label>
+                                    <span id="line-height-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">1.8</span>
+                                </div>
+                                <div class="flex items-center space-x-4 bg-white border border-gray-100 rounded-2xl px-4 py-4 shadow-sm">
+                                    <i class="fas fa-align-justify text-gray-300 text-sm"></i>
+                                    <input type="range" id="line-height-slider" min="1.4" max="2.6" step="0.1" 
+                                        class="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-purple-600 hover:accent-purple-500 active:accent-purple-700"
+                                        oninput="setReadingStyle('height', this.value)">
+                                    <i class="fas fa-align-justify text-gray-300 text-xl"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 3. Line Height (Slider) -->
-                        <div>
-                            <div class="flex justify-between mb-2">
-                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">줄 간격</label>
-                                <span class="text-xs text-purple-600 font-bold" id="line-height-display">조절하기</span>
-                            </div>
-                            <div class="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                <i class="fas fa-align-justify text-gray-300 text-xs"></i>
-                                <input type="range" id="line-height-slider" min="1.4" max="2.6" step="0.1" 
-                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                                    oninput="setReadingStyle('height', this.value)">
-                                <i class="fas fa-align-justify text-gray-300 text-lg"></i>
-                            </div>
-                        </div>
-                    </div>
+                     </div>
                 </div>
             </div>
         </div>
