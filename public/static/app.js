@@ -82,7 +82,11 @@ async function loadBibleData() {
     'data/bible.json',
     '/data/bible.json',
     './data/bible.json',
-    '/harash-bible-reading/data/bible.json'
+    '/harash-bible-reading/data/bible.json',
+    // GitHub Pages Source Root 배포 시 (dist 아닐 경우)
+    'public/data/bible.json',
+    '/harash-bible-reading/public/data/bible.json',
+    './public/data/bible.json'
   ];
 
   for (const path of candidates) {
