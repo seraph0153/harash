@@ -899,42 +899,57 @@ app.post('/api/sync/bible', async (c) => {
 
         if (!rangeText) continue;
 
-        // 범위 파싱: "창세기 1-5장" 또는 "창세기 1장"
-        // 1. 책 이름 추출 (숫자 앞까지)
-        const bookMatch = rangeText.match(/^([가-힣]+)/)
-        if (!bookMatch) throw new Error('책 이름을 찾을 수 없습니다.')
-        const bookName = bookMatch[1]
+        // 콤마로 구분된 여러 범위 처리 (예: "느헤미야 11-12, 에스더 1-3")
+        const ranges = rangeText.split(/[,&]/).map((r: string) => r.trim()).filter((r: string) => r.length > 0);
 
-        // 2. 장 추출
-        let startChap = 1
-        let endChap = 1
+        let lastBookName = null;
 
-        const chapterMatch = rangeText.match(/(\d+)(?:-(\d+))?/)
-        if (chapterMatch) {
-          startChap = parseInt(chapterMatch[1])
-          endChap = chapterMatch[2] ? parseInt(chapterMatch[2]) : startChap
+        for (const part of ranges) {
+          // 1. 책 이름 추출 (숫자 앞까지) - 없을 경우 이전 책 이름 사용
+          let bookName = null;
+          const bookMatch = part.match(/^([가-힣]+)/);
+
+          if (bookMatch) {
+            bookName = bookMatch[1];
+            lastBookName = bookName;
+          } else if (lastBookName) {
+            bookName = lastBookName;
+          } else {
+            console.warn(`Book name not found in part: ${part}`);
+            continue; // 책 이름을 찾을 수 없으면 건너뜀
+          }
+
+          // 2. 장 추출
+          let startChap = 1;
+          let endChap = 1;
+
+          const chapterMatch = part.match(/(\d+)(?:-(\d+))?/);
+          if (chapterMatch) {
+            startChap = parseInt(chapterMatch[1]);
+            endChap = chapterMatch[2] ? parseInt(chapterMatch[2]) : startChap;
+          }
+
+          batch.push(stmt.bind(
+            index + 1, // day_number (같은 날짜에 여러 행 들어감)
+            weekDay,
+            bookName,
+            startChap,
+            endChap,
+            date,
+            content || null
+          ));
         }
 
-        batch.push(stmt.bind(
-          index + 1, // day_number
-          weekDay,
-          bookName,
-          startChap,
-          endChap,
-          date,
-          content || null
-        ))
-
-        syncedCount++
+        syncedCount++;
       } catch (e: any) {
-        console.error(`Row ${index} error:`, e)
+        console.error(`Row ${index} error:`, e);
         if (!firstError) firstError = `Row ${index}: ${e.message}`;
-        errorCount++
+        errorCount++;
       }
     }
 
     if (batch.length > 0) {
-      await c.env.DB.batch(batch)
+      await c.env.DB.batch(batch);
       // Update start date
       await c.env.DB.prepare(
         `UPDATE admin_settings SET program_start_date = (SELECT date FROM bible_reading_plan ORDER BY day_number ASC LIMIT 1) WHERE id = 1`
@@ -1059,6 +1074,14 @@ app.post('/api/teams/:id/assign-leader', async (c) => {
     c.env.DB.prepare("UPDATE teams SET leader_id = ? WHERE id = ?").bind(userId, teamId)
   ]);
 
+  return c.json({ success: true });
+});
+
+// 팀원 배정
+app.put('/api/users/:id/team', async (c) => {
+  const userId = c.req.param('id');
+  const { teamId } = await c.req.json();
+  await c.env.DB.prepare('UPDATE users SET team_id = ? WHERE id = ?').bind(teamId, userId).run();
   return c.json({ success: true });
 });
 
