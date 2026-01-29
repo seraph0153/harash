@@ -903,7 +903,23 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                     ${contentHTML}
                 </div>
                 
-                <div class="mt-16 py-8 text-center px-4">
+                <!-- Comment Input Section -->
+                <div class="mt-12 mb-6 px-4">
+                    <div class="bg-purple-50 rounded-2xl p-5 border border-purple-100">
+                        <h3 class="text-sm font-bold text-purple-900 mb-3 flex items-center">
+                            <span class="text-lg mr-2">💭</span>
+                            오늘의 한 줄 묵상
+                        </h3>
+                        <textarea 
+                            id="reading-comment-input" 
+                            class="w-full p-3 bg-white border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none text-sm"
+                            rows="3"
+                            placeholder="오늘 말씀을 읽고 느낀 점을 간단히 적어주세요... (선택사항)"
+                        ></textarea>
+                    </div>
+                </div>
+                
+                <div class="py-8 text-center px-4">
                     <p class="text-purple-900/60 font-medium mb-3 text-sm">오늘의 말씀 읽기 완료</p>
                     <button onclick="completeReading(${dayNumber})" 
                         class="w-full max-w-xs bg-gray-900 text-white py-4 rounded-2xl font-bold text-base shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all">
@@ -921,9 +937,13 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 }
 async function completeReading(dayNumber) {
   try {
-    // 1. API Call (Fix: use 'updateProgress' instead of 'completeReading')
+    // Get comment from inline input
+    const commentInput = document.getElementById('reading-comment-input');
+    const commentContent = commentInput ? commentInput.value.trim() : '';
+
+    // 1. Update progress
     const res = await apiRequest('updateProgress', {
-      phone: currentUser.phone,  // Changed from userId to phone for safety
+      phone: currentUser.phone,
       day_number: dayNumber,
       chapters_read: 5 // Assume complete
     });
@@ -934,8 +954,22 @@ async function completeReading(dayNumber) {
       if (res.streak) currentUser.streak_count = res.streak;
       localStorage.setItem('harash_user', JSON.stringify(currentUser));
 
-      // 3. Show Reflection UI
-      showCommentModal(dayNumber);
+      // 3. Save comment if provided
+      if (commentContent) {
+        try {
+          await apiRequest('addComment', {
+            user_phone: currentUser.phone,
+            day_number: dayNumber,
+            content: commentContent
+          });
+        } catch (e) {
+          console.warn('Comment save failed:', e);
+          // Don't block completion if comment fails
+        }
+      }
+
+      // 4. Redirect to map screen
+      showMapScreen();
     } else {
       alert("처리 실패: " + (res.error || "알 수 없는 오류"));
     }
