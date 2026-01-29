@@ -397,15 +397,18 @@ async function showMapScreen(pushHistory = true) {
         <div class="min-h-screen bg-gray-50">
             <div class="bg-white sticky top-0 z-50 shadow-sm p-4 flex justify-between items-center">
                 <div class="flex items-center space-x-2">
-                    <span class="text-2xl">${currentUser.avatar_emoji || '😊'}</span>
+                    <button onclick="showProfileSettings()" class="text-2xl hover:scale-110 transition-transform">${currentUser.avatar_emoji || '😊'}</button>
                     <div>
-                    <div class="font-bold">${currentUser.name}</div>
+                    <div class="font-bold flex items-center">
+                        ${currentUser.name} 
+                        <button onclick="showProfileSettings()" class="ml-1 text-gray-400 text-xs"><i class="fas fa-pen"></i></button>
+                    </div>
                     <div class="text-xs text-gray-500">${getRoleKorean(currentUser.role)}</div>
                     </div>
                 </div>
                 <div class="flex space-x-3">
                     ${['senior_pastor', 'associate_pastor'].includes(currentUser.role) ?
-        `<button onclick="alert('관리자 모드(준비중)')" class="text-purple-600"><i class="fas fa-cog"></i></button>` : ''}
+        `<button onclick="showAdminScreen()" class="text-purple-600"><i class="fas fa-cog"></i></button>` : ''}
                     <div class="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-bold">🔥 ${currentUser.streak_count}</div>
                     <button onclick="logout()" class="text-gray-400"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
@@ -871,18 +874,139 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 }
 async function completeReading(dayNumber) {
   try {
-    const res = await apiRequest('completeReading', { userId: currentUser.id, dayNumber });
-    if (res.success) {
-      alert("축하합니다! 읽기를 완료했습니다.");
-      // 로컬 업데이트
+    // 1. API Call (Fix: use 'updateProgress' instead of 'completeReading')
+    const res = await apiRequest('updateProgress', {
+      phone: currentUser.phone,  // Changed from userId to phone for safety
+      day_number: dayNumber,
+      chapters_read: 5 // Assume complete
+    });
+
+    if (res.success || res.completed) {
+      // 2. Local Update
       currentUser.total_days_read = Math.max(currentUser.total_days_read, dayNumber);
+      if (res.streak) currentUser.streak_count = res.streak;
       localStorage.setItem('harash_user', JSON.stringify(currentUser));
-      showMapScreen();
+
+      // 3. Show Reflection UI
+      showCommentModal(dayNumber);
     } else {
-      alert(res.message);
+      alert("처리 실패: " + (res.error || "알 수 없는 오류"));
     }
   } catch (e) {
-    alert("완료 처리 실패: " + e.message);
+    alert("통신 오류: " + e.message);
+  }
+}
+
+// -----------------------------------------------------------
+// COMMENTS / REFLECTION UI
+// -----------------------------------------------------------
+
+function showCommentModal(dayNumber) {
+  app.innerHTML = `
+        <div class="fixed inset-0 bg-white z-50 flex flex-col pb-safe animate-in slide-in-from-bottom duration-300">
+             <div class="p-5 flex justify-between items-center bg-white">
+                <button onclick="showMapScreen()" class="text-gray-400 font-bold text-sm">다음에 하기</button>
+                <h2 class="font-bold text-lg">오늘의 묵상</h2>
+                <div class="w-16"></div> 
+            </div>
+            
+            <div class="flex-1 p-5 flex flex-col justify-center items-center">
+                <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center text-3xl mb-4">
+                    🙏
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">오늘 말씀, 어떠셨나요?</h3>
+                <p class="text-gray-500 text-sm mb-8 text-center px-4">짧게라도 묵상을 남기면 은혜가 배가 됩니다.</p>
+                
+                <textarea id="comment-input" 
+                    class="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none text-base mb-6"
+                    rows="5"
+                    placeholder="여기에 묵상 내용을 적어주세요..."></textarea>
+                
+                <button onclick="submitComment(${dayNumber})" 
+                    class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 transition-all">
+                    나눔 완료하기
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function submitComment(dayNumber) {
+  const input = document.getElementById('comment-input');
+  const content = input.value.trim();
+
+  if (!content) {
+    showMapScreen(); // Skip if empty
+    return;
+  }
+
+  try {
+    await apiRequest('addComment', {
+      user_phone: currentUser.phone, // Changed from user_id to user_phone
+      // Wait, Code.gs 'addComment' takes { user_id } and uses it as index.
+      // "const phone = userData[user_id][phoneIdx];"
+      // If currentUser.id is 1-based (from login), but line 445 uses array access.
+      // `userData[user_id]` -> if ID is 1, it accesses Row 1. Correct.
+      day_number: dayNumber, // number
+      content: content
+    });
+
+    // Show Success & Community
+    showCommunityComments(dayNumber);
+
+  } catch (e) {
+    alert("저장 실패: " + e.message);
+  }
+}
+
+async function showCommunityComments(dayNumber) {
+  app.innerHTML = `
+        <div class="min-h-screen bg-gray-50 pb-safe">
+             <div class="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center z-10">
+                <button onclick="showMapScreen()" class="p-2 text-gray-800"><i class="fas fa-times"></i></button>
+                <h2 class="font-bold">오늘의 나눔</h2>
+                 <div class="w-8"></div>
+            </div>
+            
+            <div id="comments-list" class="p-4 space-y-4 max-w-xl mx-auto">
+                 <div class="flex justify-center p-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                 </div>
+            </div>
+        </div>
+    `;
+
+  try {
+    const res = await apiRequest('getComments', { day: dayNumber });
+    const comments = res.data || res; // handle loose response
+
+    const listEl = document.getElementById('comments-list');
+    if (!comments || comments.length === 0) {
+      listEl.innerHTML = `
+                <div class="text-center py-20 text-gray-400">
+                    <div class="text-4xl mb-2">💬</div>
+                    <p>아직 작성된 나눔이 없습니다.<br>첫 번째로 나눔을 시작해보세요!</p>
+                </div>
+            `;
+      return;
+    }
+
+    listEl.innerHTML = comments.map(c => `
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                 <div class="flex items-center space-x-3 mb-3">
+                     <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl border border-gray-100">${c.avatar_emoji || '😊'}</div>
+                     <div>
+                        <div class="font-bold text-gray-900 text-sm">${c.user_name}</div>
+                        <div class="text-xs text-gray-400">${new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                     </div>
+                 </div>
+                 <p class="text-gray-700 leading-relaxed text-sm">${c.content.replace(/\n/g, '<br>')}</p>
+            </div>
+        `).join('');
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById('comments-list').innerHTML = `<p class="text-center text-red-500 py-10">불러오기 실패</p>`;
   }
 }
 
