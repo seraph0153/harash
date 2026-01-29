@@ -4,7 +4,7 @@
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
 // ⚡️ 중요: 배포한 Google Apps Script 웹 앱 URL을 여기에 넣으세요!
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzMpKPl1BeA5Xwyzr-M8L_mOBiofCNP-8crvF6o1ediK7G6GdhDkMO041Q1rMIOGqxy/exec";
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzliU5nMvwnznlC4HqDaXvqtuh1oIITXv_tjKaw4AEkjWjHptnLtjzsDHEO8Lhi7hWj/exec";
 
 // 전역 상태
 let currentUser = null;
@@ -279,13 +279,15 @@ async function handleLogin(e) {
 
   try {
     const res = await apiRequest('login', { phone, pin });
-    if (res.success) {
+    // Support both 'status: success' (new) and 'success: true' (legacy pattern)
+    if (res.status === 'success' || res.success) {
       currentUser = res.user;
       if (phone === '01063341270') currentUser.role = 'senior_pastor';
       localStorage.setItem('harash_user', JSON.stringify(currentUser));
       showMapScreen();
     } else {
-      alert(res.message);
+      // Alert the exact error from GAS
+      alert(res.error || res.message || '로그인 처리에 실패했습니다.');
     }
   } catch (error) {
     alert('로그인 실패: ' + (error.message || '서버 오류'));
