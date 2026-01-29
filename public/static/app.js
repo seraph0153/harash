@@ -409,7 +409,7 @@ async function showMapScreen(pushHistory = true) {
                     </div>
                 </div>
                 <div class="flex space-x-3">
-                    ${['senior_pastor', 'associate_pastor'].includes(currentUser.role) ?
+                    ${['admin', 'senior_pastor', 'associate_pastor'].includes(currentUser.role) ?
         `<button onclick="showAdminScreen()" class="text-purple-600"><i class="fas fa-cog"></i></button>` : ''}
                     <div class="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-bold">🔥 ${currentUser.streak_count}</div>
                     <button onclick="logout()" class="text-gray-400"><i class="fas fa-sign-out-alt"></i></button>
@@ -1061,6 +1061,178 @@ async function showCommunityComments(dayNumber) {
     console.error(e);
     document.getElementById('comments-list').innerHTML = `<p class="text-center text-red-500 py-10">불러오기 실패</p>`;
   }
+}
+
+// ============================================
+// 👥 ADMIN SCREEN - TEAM MANAGEMENT
+// ============================================
+async function showAdminScreen() {
+  history.pushState({ view: 'admin' }, '', '#admin');
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="animate-spin text-4xl mb-4">⚙️</div>
+        <p class="text-gray-500">팀 관리 화면 로딩 중...</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await apiRequest('getAllUsers');
+    if (res.status !== 'success') throw new Error(res.error);
+
+    const users = res.data;
+
+    // Group users by team
+    const teamMap = {};
+    users.forEach(user => {
+      const teamId = user.team_id || 0;
+      if (!teamMap[teamId]) teamMap[teamId] = [];
+      teamMap[teamId].push(user);
+    });
+
+    const teamIds = Object.keys(teamMap).sort((a, b) => a - b);
+
+    app.innerHTML = `
+      <div class="min-h-screen bg-gray-50 pb-20">
+        <div class="sticky top-0 bg-white border-b border-gray-200 z-10">
+          <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <button onclick="showMapScreen()" class="text-gray-600 hover:text-gray-800">
+              <i class="fas fa-arrow-left text-xl"></i>
+            </button>
+            <h1 class="text-xl font-bold text-gray-800">👥 팀 관리</h1>
+            <div class="w-8"></div>
+          </div>
+        </div>
+        
+        <div class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          ${teamIds.map(teamId => {
+      const teamUsers = teamMap[teamId];
+      const teamName = teamId == 0 ? '미배정' : `팀 ${teamId}`;
+
+      return `
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-100">
+                  <h2 class="font-bold text-gray-800 flex items-center">
+                    <span class="text-lg">📋</span>
+                    <span class="ml-2">${teamName}</span>
+                    <span class="ml-2 text-sm text-gray-500">(${teamUsers.length}명)</span>
+                  </h2>
+                </div>
+                
+                <div 
+                  class="p-4 space-y-2 min-h-[100px] team-drop-zone" 
+                  data-team-id="${teamId}"
+                  ondragover="handleDragOver(event)"
+                  ondrop="handleDrop(event)"
+                >
+                  ${teamUsers.map(user => `
+                    <div 
+                      class="bg-gray-50 rounded-lg p-3 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card"
+                      draggable="true"
+                      data-user-phone="${user.phone}"
+                      ondragstart="handleDragStart(event)"
+                      ondragend="handleDragEnd(event)"
+                    >
+                      <div class="flex items-center space-x-3">
+                        <div class="text-2xl">${user.avatar_emoji || '👤'}</div>
+                        <div>
+                          <div class="font-semibold text-gray-800">${user.name}</div>
+                          <div class="text-xs text-gray-500">${getRoleKorean(user.role)}</div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-2 text-sm text-gray-500">
+                        <span>🔥 ${user.streak_count || 0}</span>
+                        <span>📖 ${user.total_days_read || 0}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                  
+                  ${teamUsers.length === 0 ? `
+                    <div class="text-center py-8 text-gray-400 text-sm">
+                      팀원이 없습니다. 드래그해서 추가하세요.
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+    }).join('')}
+        </div>
+      </div>
+    `;
+
+  } catch (e) {
+    console.error(e);
+    app.innerHTML = `
+      <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div class="text-center">
+          <div class="text-4xl mb-4">😢</div>
+          <p class="text-gray-800 font-bold mb-2">데이터 로드 실패</p>
+          <p class="text-sm text-gray-500 mb-4">${e.message}</p>
+          <button onclick="showMapScreen()" class="bg-purple-600 text-white px-6 py-2 rounded-lg">
+            돌아가기
+          </button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Drag-and-Drop Handlers
+let draggedUserPhone = null;
+
+function handleDragStart(e) {
+  draggedUserPhone = e.target.dataset.userPhone;
+  e.target.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+  e.target.style.opacity = '1';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  // Visual feedback
+  const dropZone = e.currentTarget;
+  if (dropZone.classList.contains('team-drop-zone')) {
+    dropZone.style.backgroundColor = '#f3f4f6';
+  }
+}
+
+async function handleDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const dropZone = e.currentTarget;
+  dropZone.style.backgroundColor = '';
+
+  if (!draggedUserPhone) return;
+
+  const newTeamId = parseInt(dropZone.dataset.teamId);
+
+  try {
+    const res = await apiRequest('updateUserTeam', {
+      phone: draggedUserPhone,
+      teamId: newTeamId
+    });
+
+    if (res.status === 'success') {
+      // Refresh admin screen
+      showAdminScreen();
+    } else {
+      alert('팀 이동 실패: ' + (res.error || '알 수 없는 오류'));
+    }
+  } catch (e) {
+    console.error(e);
+    alert('팀 이동 중 오류가 발생했습니다.');
+  }
+
+  draggedUserPhone = null;
 }
 
 // Init with Global Error Handling
