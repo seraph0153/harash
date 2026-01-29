@@ -489,10 +489,9 @@ async function showMapScreen(pushHistory = true) {
 
   // 2. 백그라운드 갱신
   try {
-    const [planRes, usersRes, progressRes] = await Promise.all([
+    const [planRes, usersRes] = await Promise.all([
       apiRequest('getBiblePlan'),
-      apiRequest('getAllUsers'),
-      apiRequest('getUserProgress', { userId: currentUser.id })
+      apiRequest('getAllUsers')
     ]);
 
     if (planRes.status === 'success') {
@@ -504,12 +503,7 @@ async function showMapScreen(pushHistory = true) {
       allUsers = usersRes.data;
     }
 
-    let freshProgress = null;
-    if (progressRes.status === 'success') {
-      freshProgress = progressRes.data;
-    }
-
-    renderUI(biblePlan, allUsers, freshProgress);
+    renderUI(biblePlan, allUsers, currentUser);
 
   } catch (e) {
     console.warn("데이터 백그라운드 갱신 실패:", e);
