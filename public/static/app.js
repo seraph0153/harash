@@ -71,16 +71,31 @@ const AVATAR_EMOJIS = ['😊', '😁', '🤗', '😎', '🥰', '😇', '🤓', '
 
 async function loadBibleData() {
   if (bibleData) return bibleData;
-  try {
-    const res = await fetch('data/bible.json');
-    if (!res.ok) throw new Error('Bible load failed');
-    bibleData = await res.json();
-    console.log("Bible data loaded");
-    return bibleData;
-  } catch (e) {
-    console.warn('Bible load error:', e);
-    return null;
+
+  // GitHub Pages 등 다양한 환경 대응을 위한 경로 후보군
+  const candidates = [
+    'data/bible.json',
+    './data/bible.json',
+    '/harash-bible-reading/data/bible.json', // GitHub Pages Repository Name
+    '/data/bible.json'
+  ];
+
+  for (const path of candidates) {
+    try {
+      console.log(`[BibleLoad] Trying path: ${path}`);
+      const res = await fetch(path);
+      if (res.ok) {
+        bibleData = await res.json();
+        console.log("[BibleLoad] Success:", path);
+        return bibleData;
+      }
+    } catch (e) {
+      console.warn(`[BibleLoad] Failed ${path}:`, e);
+    }
   }
+
+  console.error("[BibleLoad] All paths failed");
+  return null;
 }
 
 // ----------------------------------------------------
@@ -638,7 +653,15 @@ async function showReadingScreen(dayNumber) {
       }
     }
   } else {
-    contentHTML = `<div class="text-center py-10 text-gray-500">성경 데이터를 불러오지 못했습니다.</div>`;
+    contentHTML = `
+      <div class="text-center py-20">
+        <div class="text-4xl mb-4">😢</div>
+        <p class="text-gray-500 mb-6">성경 데이터를 불러오지 못했습니다.</p>
+        <button onclick="window.location.reload()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-purple-700 transition">
+          🔄 다시 시도
+        </button>
+      </div>
+    `;
   }
 
   app.innerHTML = `
