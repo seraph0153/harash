@@ -606,30 +606,56 @@ function setReadingStyle(type, value) {
   if (!container) return;
 
   if (type === 'size') {
-    container.classList.remove('text-base', 'text-lg', 'text-xl', 'text-2xl');
+    // Tailwind classes for size
+    container.classList.remove('text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl');
     container.classList.add(value);
     localStorage.setItem('harash_font_size', value);
-  } else if (type === 'height') {
-    container.classList.remove('leading-normal', 'leading-relaxed', 'leading-loose');
-    container.classList.add(value);
-    localStorage.setItem('harash_line_height', value);
-  }
 
-  // Update UI Buttons
-  document.querySelectorAll(`.setting-btn-${type}`).forEach(btn => {
-    if (btn.dataset.value === value) {
-      btn.classList.remove('bg-transparent', 'text-gray-500');
-      btn.classList.add('bg-white', 'text-purple-700', 'shadow-sm', 'font-bold');
-    } else {
-      btn.classList.add('bg-transparent', 'text-gray-500');
-      btn.classList.remove('bg-white', 'text-purple-700', 'shadow-sm', 'font-bold');
-    }
-  });
+    // Update Buttons
+    document.querySelectorAll('.setting-btn-size').forEach(btn => {
+      if (btn.dataset.value === value) {
+        btn.classList.add('bg-purple-600', 'text-white', 'border-purple-600');
+        btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-200');
+      } else {
+        btn.classList.remove('bg-purple-600', 'text-white', 'border-purple-600');
+        btn.classList.add('bg-white', 'text-gray-700', 'border-gray-200');
+      }
+    });
+
+  } else if (type === 'font') {
+    // Direct Style for Fonts
+    container.style.fontFamily = value;
+    localStorage.setItem('harash_font_family', value);
+
+    // Update Buttons
+    document.querySelectorAll('.setting-btn-font').forEach(btn => {
+      if (btn.dataset.value === value) {
+        btn.classList.add('ring-2', 'ring-purple-500', 'bg-purple-50');
+        btn.classList.remove('bg-gray-50');
+      } else {
+        btn.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-50');
+        btn.classList.add('bg-gray-50');
+      }
+    });
+
+  } else if (type === 'height') {
+    // Inline style for Line Height (Slider)
+    container.style.lineHeight = value;
+    localStorage.setItem('harash_line_height_val', value);
+
+    // Sync Slider UI
+    const slider = document.getElementById('line-height-slider');
+    if (slider && slider.value !== String(value)) slider.value = value;
+
+    const display = document.getElementById('line-height-display');
+    if (display) display.textContent = value;
+  }
 }
 
-function initSettingsUI(currentSize, currentHeight) {
-  // Initial Highlight
+function initSettingsUI(currentSize, currentFont, currentHeight) {
+  // Apply all
   setReadingStyle('size', currentSize);
+  setReadingStyle('font', currentFont);
   setReadingStyle('height', currentHeight);
 }
 
@@ -648,7 +674,8 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Load Preferences
   const savedSize = localStorage.getItem('harash_font_size') || 'text-xl';
-  const savedHeight = localStorage.getItem('harash_line_height') || 'leading-loose';
+  const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
+  const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
 
   const app = document.getElementById('app');
 
@@ -738,64 +765,90 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   // Render Skeleton
   app.innerHTML = `
         <div class="min-h-screen bg-gray-50 pb-safe">
-            <!-- Header -->
-            <div class="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 text-gray-800 p-4 sticky top-0 z-50 flex justify-between items-center shadow-sm border-b border-gray-100">
-                <button onclick="showMapScreen()" class="hover:bg-gray-100 p-2 rounded-full transition-colors"><i class="fas fa-arrow-left text-lg"></i></button>
-                <div class="font-bold truncate px-2 text-base">${plan.display_text}</div>
-                <button onclick="toggleSettings()" class="bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors border border-gray-200 text-gray-600 w-10 h-10 flex items-center justify-center">
-                    <i class="fas fa-font"></i>
+            <!-- Header (Compact) -->
+            <div class="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 text-gray-800 p-3 sticky top-0 z-50 flex justify-between items-center shadow-sm border-b border-gray-100 h-14">
+                <button onclick="showMapScreen()" class="hover:bg-gray-100 p-2 rounded-full transition-colors w-10 h-10 flex items-center justify-center"><i class="fas fa-arrow-left text-lg"></i></button>
+                <div class="font-bold truncate px-2 text-sm">${plan.display_text}</div>
+                <button onclick="toggleSettings()" class="bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors border border-gray-200 text-gray-600 w-9 h-9 flex items-center justify-center">
+                    <i class="fas fa-font text-sm"></i>
                 </button>
             </div>
             
             <!-- Content -->
-            <div class="p-5 max-w-2xl mx-auto bg-white min-h-screen shadow-sm">
+            <div class="max-w-xl mx-auto bg-white min-h-screen shadow-sm">
                 <!-- Dynamic Style Wrapper -->
-                <div id="bible-content-wrapper" class="text-gray-700 font-serif transition-all duration-300 ${savedSize} ${savedHeight}">
+                <div id="bible-content-wrapper" class="p-4 text-gray-700 transition-all duration-300">
                     ${contentHTML}
                 </div>
                 
-                <div class="mt-16 mb-12 py-8 bg-purple-50/50 rounded-2xl border border-purple-100 text-center mx-2">
-                    <p class="text-purple-900 font-bold mb-2 text-lg">오늘의 말씀 읽기 완료</p>
-                    <p class="text-sm text-gray-500 mb-6">아래 버튼을 눌러주세요</p>
+                <div class="mt-12 mb-20 py-8 text-center px-6">
+                    <p class="text-purple-900 font-bold mb-2 text-base">오늘의 말씀 읽기 완료</p>
                     <button onclick="completeReading(${dayNumber})" 
-                        class="w-4/5 max-w-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-all">
+                        class="w-full max-w-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl font-bold text-base shadow-lg hover:shadow-xl active:scale-95 transition-all">
                         ✅ 아멘! 읽었습니다
                     </button>
                 </div>
             </div>
             
-            <!-- Settings Modal -->
+            <!-- Settings Modal (Compact & Clean) -->
             <div id="settings-modal" class="hidden fixed inset-0 z-[60]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="toggleSettings()"></div>
+                <div class="fixed inset-0 bg-black/40 transition-opacity backdrop-blur-[2px]" onclick="toggleSettings()"></div>
 
-                <div class="fixed inset-x-0 bottom-0 z-10 w-full bg-white rounded-t-3xl shadow-2xl transform transition-all p-6 pb-10 safe-area-bottom">
-                     <div class="flex justify-between items-center mb-8">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">본문 설정</h3>
-                            <p class="text-xs text-gray-500">글자 크기와 줄 간격을 조절하세요</p>
-                        </div>
-                        <button onclick="toggleSettings()" class="bg-gray-100 rounded-full p-2 text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-times"></i>
+                <div class="fixed inset-x-0 bottom-0 z-10 w-full bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transform transition-transform p-5 pb-8 safe-area-bottom">
+                     <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-base font-bold text-gray-900">읽기 설정</h3>
+                        <button onclick="toggleSettings()" class="bg-gray-100 rounded-full p-1.5 text-gray-500 hover:text-gray-900 w-8 h-8 flex items-center justify-center">
+                            <i class="fas fa-times text-sm"></i>
                         </button>
                     </div>
                     
                     <div class="space-y-6">
+                        <!-- 1. Font Family -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">글자 크기</label>
-                            <div class="grid grid-cols-4 gap-2 bg-gray-100 p-1.5 rounded-xl">
-                                <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size py-3 rounded-lg text-sm font-medium transition-all" data-value="text-base">작게</button>
-                                <button onclick="setReadingStyle('size', 'text-lg')" class="setting-btn-size py-3 rounded-lg text-base font-medium transition-all" data-value="text-lg">보통</button>
-                                <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size py-3 rounded-lg text-xl font-medium transition-all" data-value="text-xl">크게</button>
-                                <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size py-3 rounded-lg text-2xl font-medium transition-all" data-value="text-2xl">더크게</button>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">글꼴</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setReadingStyle('font', '\'Gowun Batang\', serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Gowun Batang', serif">
+                                    <span class="text-lg mb-1" style="font-family: 'Gowun Batang', serif">고운바탕</span>
+                                    <span class="text-[10px] text-gray-400">명조체 감성</span>
+                                </button>
+                                <button onclick="setReadingStyle('font', '\'Gowun Dodum\', sans-serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Gowun Dodum', sans-serif">
+                                    <span class="text-lg mb-1" style="font-family: 'Gowun Dodum', sans-serif">고운돋움</span>
+                                    <span class="text-[10px] text-gray-400">깔끔한 느낌</span>
+                                </button>
+                                <button onclick="setReadingStyle('font', '\'Noto Serif KR\', serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Noto Serif KR', serif">
+                                    <span class="text-lg mb-1" style="font-family: 'Noto Serif KR', serif">본문명조</span>
+                                    <span class="text-[10px] text-gray-400">신문/책 스타일</span>
+                                </button>
+                                <button onclick="setReadingStyle('font', '\'Noto Sans KR\', sans-serif')" class="setting-btn-font p-3 rounded-xl border border-gray-100 bg-gray-50 flex flex-col items-center justify-center h-16 transition-all" data-value="'Noto Sans KR', sans-serif">
+                                    <span class="text-lg mb-1" style="font-family: 'Noto Sans KR', sans-serif">본문고딕</span>
+                                    <span class="text-[10px] text-gray-400">현대적인 느낌</span>
+                                </button>
                             </div>
                         </div>
 
+                        <!-- 2. Font Size -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-3">줄 간격</label>
-                            <div class="grid grid-cols-3 gap-2 bg-gray-100 p-1.5 rounded-xl">
-                                <button onclick="setReadingStyle('height', 'leading-normal')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-normal">좁게</button>
-                                <button onclick="setReadingStyle('height', 'leading-relaxed')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-relaxed">보통</button>
-                                <button onclick="setReadingStyle('height', 'leading-loose')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-loose">넓게</button>
+                            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">글자 크기</label>
+                            <div class="flex bg-gray-100 p-1 rounded-xl">
+                                <button onclick="setReadingStyle('size', 'text-sm')" class="setting-btn-size flex-1 py-2 rounded-lg text-xs font-medium border border-transparent transition-all" data-value="text-sm">작게</button>
+                                <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size flex-1 py-2 rounded-lg text-sm font-medium border border-transparent transition-all" data-value="text-base">보통</button>
+                                <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size flex-1 py-2 rounded-lg text-base font-medium border border-transparent transition-all" data-value="text-xl">크게</button>
+                                <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size flex-1 py-2 rounded-lg text-lg font-medium border border-transparent transition-all" data-value="text-2xl">더크게</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Line Height (Slider) -->
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">줄 간격</label>
+                                <span class="text-xs text-purple-600 font-bold" id="line-height-display">조절하기</span>
+                            </div>
+                            <div class="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <i class="fas fa-align-justify text-gray-300 text-xs"></i>
+                                <input type="range" id="line-height-slider" min="1.4" max="2.6" step="0.1" 
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                    oninput="setReadingStyle('height', this.value)">
+                                <i class="fas fa-align-justify text-gray-300 text-lg"></i>
                             </div>
                         </div>
                     </div>
@@ -806,7 +859,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Init Active Buttons
   setTimeout(() => {
-    initSettingsUI(savedSize, savedHeight);
+    initSettingsUI(savedSize, savedFont, savedHeight);
   }, 50);
 }
 async function completeReading(dayNumber) {
