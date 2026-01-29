@@ -78,6 +78,9 @@ async function loadBibleData() {
     window.bibleDebugLogs.push(msg);
   };
 
+  addLog(`Current Page URL: ${window.location.href}`);
+  addLog(`Document Base URI: ${document.baseURI}`);
+
   const candidates = [
     'data/bible.json',
     '/data/bible.json',
