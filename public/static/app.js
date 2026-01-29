@@ -72,29 +72,36 @@ const AVATAR_EMOJIS = ['😊', '😁', '🤗', '😎', '🥰', '😇', '🤓', '
 async function loadBibleData() {
   if (bibleData) return bibleData;
 
-  // GitHub Pages 등 다양한 환경 대응을 위한 경로 후보군
+  window.bibleDebugLogs = [];
+  const addLog = (msg) => {
+    console.log(msg);
+    window.bibleDebugLogs.push(msg);
+  };
+
   const candidates = [
     'data/bible.json',
+    '/data/bible.json',
     './data/bible.json',
-    '/harash-bible-reading/data/bible.json', // GitHub Pages Repository Name
-    '/data/bible.json'
+    '/harash-bible-reading/data/bible.json'
   ];
 
   for (const path of candidates) {
     try {
-      console.log(`[BibleLoad] Trying path: ${path}`);
+      addLog(`Trying: ${path}`);
       const res = await fetch(path);
+      addLog(`Status: ${res.status} ${res.statusText}`);
+
       if (res.ok) {
         bibleData = await res.json();
-        console.log("[BibleLoad] Success:", path);
+        addLog("Success!");
         return bibleData;
       }
     } catch (e) {
-      console.warn(`[BibleLoad] Failed ${path}:`, e);
+      addLog(`Error: ${e.message}`);
     }
   }
 
-  console.error("[BibleLoad] All paths failed");
+  addLog("All paths failed.");
   return null;
 }
 
@@ -653,10 +660,15 @@ async function showReadingScreen(dayNumber) {
       }
     }
   } else {
+    const logs = window.bibleDebugLogs ? window.bibleDebugLogs.join('<br>') : 'No logs';
     contentHTML = `
-      <div class="text-center py-20">
+      <div class="text-center py-20 px-4">
         <div class="text-4xl mb-4">😢</div>
-        <p class="text-gray-500 mb-6">성경 데이터를 불러오지 못했습니다.</p>
+        <p class="text-gray-800 font-bold mb-2">성경 데이터 로드 실패</p>
+        <div class="bg-gray-100 text-left text-xs p-4 rounded mb-6 font-mono text-gray-600 overflow-x-auto whitespace-nowrap">
+            ${logs}
+        </div>
+        <p class="text-gray-500 text-sm mb-6">위 로그를 캡처해서 개발자에게 보내주세요.</p>
         <button onclick="window.location.reload()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-purple-700 transition">
           🔄 다시 시도
         </button>
