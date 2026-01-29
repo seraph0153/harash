@@ -593,7 +593,13 @@ function renderHorizontalMap(todayDateStr) {
 }
 
 function getRoleKorean(role) {
-  const map = { senior_pastor: '담임목사', team_leader: '팀장', member: '팀원' };
+  const map = {
+    admin: '관리자',
+    senior_pastor: '담임목사',
+    team_leader: '팀장',
+    sub_leader: '부팀장',
+    member: '팀원'
+  };
   return map[role] || '성도';
 }
 
