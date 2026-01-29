@@ -199,6 +199,10 @@ function showLoginScreen() {
   `;
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   if (deferredPrompt) document.getElementById('installAppBtn')?.classList.remove('hidden');
+
+  // ⚡️ GAS 워밍업 (Ping)
+  // 사용자가 입력하는 동안 백그라운드에서 스크립트를 깨워놓음
+  fetch(API_BASE_URL + '?action=ping', { mode: 'no-cors' }).catch(() => { });
 }
 
 async function handleLogin(e) {
@@ -344,14 +348,14 @@ async function showMapScreen() {
             </div>
             
             <div class="max-w-full mx-auto pb-20 overflow-x-auto scrollbar-hide">
-            <div class="flex px-4 space-x-4 min-w-max pb-4">
+            <div class="flex px-4 space-x-4 w-fit mx-auto justify-center pb-4">
             ${teams.map(t => `
-                <div class="bg-white rounded-xl shadow-sm p-4 w-[340px] flex-none border border-gray-100">
+                <div class="bg-white rounded-xl shadow-sm p-4 w-[340px] flex-none border border-gray-100 flex flex-col">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-gray-800 text-lg">${t.name}</h3>
                         <span class="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded border border-gray-200">평균 ${Math.round(t.avg_days)}일</span>
                     </div>
-                    <div class="space-y-3 h-[240px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div class="space-y-3 h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                         ${t.users.map(u => `
                             <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
                                 <div class="flex items-center space-x-3">
