@@ -592,6 +592,47 @@ function getRoleKorean(role) {
   return map[role] || '성도';
 }
 
+// -----------------------------------------------------------
+// VIEW CONTROLLERS (Settings Helpers)
+// -----------------------------------------------------------
+
+function toggleSettings() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) modal.classList.toggle('hidden');
+}
+
+function setReadingStyle(type, value) {
+  const container = document.getElementById('bible-content-wrapper');
+  if (!container) return;
+
+  if (type === 'size') {
+    container.classList.remove('text-base', 'text-lg', 'text-xl', 'text-2xl');
+    container.classList.add(value);
+    localStorage.setItem('harash_font_size', value);
+  } else if (type === 'height') {
+    container.classList.remove('leading-normal', 'leading-relaxed', 'leading-loose');
+    container.classList.add(value);
+    localStorage.setItem('harash_line_height', value);
+  }
+
+  // Update UI Buttons
+  document.querySelectorAll(`.setting-btn-${type}`).forEach(btn => {
+    if (btn.dataset.value === value) {
+      btn.classList.remove('bg-transparent', 'text-gray-500');
+      btn.classList.add('bg-white', 'text-purple-700', 'shadow-sm', 'font-bold');
+    } else {
+      btn.classList.add('bg-transparent', 'text-gray-500');
+      btn.classList.remove('bg-white', 'text-purple-700', 'shadow-sm', 'font-bold');
+    }
+  });
+}
+
+function initSettingsUI(currentSize, currentHeight) {
+  // Initial Highlight
+  setReadingStyle('size', currentSize);
+  setReadingStyle('height', currentHeight);
+}
+
 async function showReadingScreen(dayNumber, pushHistory = true) {
   if (pushHistory) {
     history.pushState({ view: 'reading', day: dayNumber }, '', '#reading');
@@ -604,6 +645,10 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
     alert("해당 일차의 데이터를 찾을 수 없습니다.");
     return;
   }
+
+  // Load Preferences
+  const savedSize = localStorage.getItem('harash_font_size') || 'text-xl';
+  const savedHeight = localStorage.getItem('harash_line_height') || 'leading-loose';
 
   const app = document.getElementById('app');
 
@@ -624,61 +669,42 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   // 본문 생성 로직
   let contentHTML = '';
 
-  // plan.ranges가 있으면 사용, 없으면(구버전 호환) 단일 필드 사용
   const ranges = plan.ranges || [
     { book: plan.book_name, start: plan.start_chapter, end: plan.end_chapter }
   ];
 
   if (bibleData) {
     for (const range of ranges) {
-      // 책 이름 매핑: 역대상 -> 1ch -> 대상
-      // 1. FullName -> Code (역대상 -> 1ch)
       const code = BIBLE_BOOK_CODES[range.book];
       let bookAbbr = '';
 
-      // 2. Code -> ShortName (1ch -> 대상)
       if (code) {
-        // BIBLE_BOOK_CODES에서 해당 code를 가진 키 중 가장 짧은 것을 찾음 (단, 원본과 다를 수 있음)
-        // 예: '역대상': '1ch', '대상': '1ch' -> '대상' 선택
         const potentialKeys = Object.keys(BIBLE_BOOK_CODES).filter(key => BIBLE_BOOK_CODES[key] === code);
-        // 가장 짧은 키 선택 (대부분 약어는 1~2글자)
         bookAbbr = potentialKeys.reduce((a, b) => a.length <= b.length ? a : b);
       } else {
-        // 매핑 실패 시 원본 사용 (혹시 json이 풀네임일 수도 있으니)
         bookAbbr = range.book;
       }
 
-      // 책 제목 섹션
       contentHTML += `
                 <div class="mb-8 border-b pb-2 mt-4">
                     <h2 class="text-2xl font-bold text-gray-800">${range.book}</h2>
                 </div>
             `;
 
-      // 장별 본문
       for (let ch = range.start; ch <= range.end; ch++) {
-        contentHTML += `<div class="mb-6">
-                    <h3 class="text-xl font-semibold text-purple-700 mb-3">${ch}장</h3>
-                    <div class="space-y-2 text-gray-700 leading-relaxed text-lg font-serif">`;
+        contentHTML += `<div class="mb-8">
+                    <h3 class="text-xl font-semibold text-purple-700 mb-4 px-2 border-l-4 border-purple-200">${ch}장</h3>
+                    <div class="space-y-2">`; // 개별 장 컨테이너 (폰트는 상위 wrapper에서 제어)
 
         let verseCount = 0;
-        // 절 반복 (1절부터 시작해서 데이터가 없을 때까지)
-        for (let v = 1; v <= 200; v++) { // 200절 안전장치
+        for (let v = 1; v <= 200; v++) {
           const key = `${bookAbbr}${ch}:${v}`;
           const text = bibleData[key];
+          if (!text) break;
 
-          if (!text) {
-            // 첫 절부터 없으면, 혹시 약어가 틀렸나? -> 그래도 없으면 break
-            if (v === 1) {
-              // console.log(`Missing: ${key}`);
-            }
-            break;
-          }
-
-          // 텍스트 있음
           contentHTML += `
-                        <p class="relative pl-6">
-                            <span class="absolute left-0 top-1 text-xs text-gray-400 font-sans select-none">${v}</span>
+                        <p class="relative pl-6 hover:bg-yellow-50 rounded transition-colors duration-200 py-0.5">
+                            <span class="absolute left-0 top-1 text-[0.6em] text-gray-400 font-sans select-none font-bold">${v}</span>
                             ${text}
                         </p>
                     `;
@@ -693,6 +719,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
       }
     }
   } else {
+    // Error Handling ...
     const logs = window.bibleDebugLogs ? window.bibleDebugLogs.join('<br>') : 'No logs';
     contentHTML = `
       <div class="text-center py-20 px-4">
@@ -701,36 +728,86 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
         <div class="bg-gray-100 text-left text-xs p-4 rounded mb-6 font-mono text-gray-600 overflow-x-auto whitespace-nowrap">
             ${logs}
         </div>
-        <p class="text-gray-500 text-sm mb-6">위 로그를 캡처해서 개발자에게 보내주세요.</p>
-        <button onclick="window.location.reload()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-purple-700 transition">
+        <button onclick="window.location.reload()" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold">
           🔄 다시 시도
         </button>
       </div>
     `;
   }
 
+  // Render Skeleton
   app.innerHTML = `
-        <div class="min-h-screen bg-gray-50">
-            <div class="bg-purple-600 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
-                <button onclick="showMapScreen()" class="hover:bg-purple-700 p-2 rounded"><i class="fas fa-arrow-left"></i> 목록</button>
-                <div class="font-bold truncate px-2 text-sm">${plan.display_text}</div>
-                <div class="w-10"></div>
+        <div class="min-h-screen bg-gray-50 pb-safe">
+            <!-- Header -->
+            <div class="bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 text-gray-800 p-4 sticky top-0 z-50 flex justify-between items-center shadow-sm border-b border-gray-100">
+                <button onclick="showMapScreen()" class="hover:bg-gray-100 p-2 rounded-full transition-colors"><i class="fas fa-arrow-left text-lg"></i></button>
+                <div class="font-bold truncate px-2 text-base">${plan.display_text}</div>
+                <button onclick="toggleSettings()" class="bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors border border-gray-200 text-gray-600 w-10 h-10 flex items-center justify-center">
+                    <i class="fas fa-font"></i>
+                </button>
             </div>
             
-            <div class="p-4 max-w-3xl mx-auto bg-white min-h-screen shadow-sm">
-                ${contentHTML}
+            <!-- Content -->
+            <div class="p-5 max-w-2xl mx-auto bg-white min-h-screen shadow-sm">
+                <!-- Dynamic Style Wrapper -->
+                <div id="bible-content-wrapper" class="text-gray-700 font-serif transition-all duration-300 ${savedSize} ${savedHeight}">
+                    ${contentHTML}
+                </div>
                 
-                <div class="mt-12 mb-20 p-6 bg-purple-50 rounded-xl border border-purple-100 text-center">
-                    <p class="text-purple-800 font-bold mb-2">오늘의 말씀을 모두 읽으셨나요?</p>
-                    <p class="text-sm text-gray-600 mb-6">완료 버튼을 누르면 진도표에 기록됩니다.</p>
+                <div class="mt-16 mb-12 py-8 bg-purple-50/50 rounded-2xl border border-purple-100 text-center mx-2">
+                    <p class="text-purple-900 font-bold mb-2 text-lg">오늘의 말씀 읽기 완료</p>
+                    <p class="text-sm text-gray-500 mb-6">아래 버튼을 눌러주세요</p>
                     <button onclick="completeReading(${dayNumber})" 
-                        class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-xl hover:scale-105 transition-transform">
-                        ✅ 읽기 완료
+                        class="w-4/5 max-w-xs bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-all">
+                        ✅ 아멘! 읽었습니다
                     </button>
+                </div>
+            </div>
+            
+            <!-- Settings Modal -->
+            <div id="settings-modal" class="hidden fixed inset-0 z-[60]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="toggleSettings()"></div>
+
+                <div class="fixed inset-x-0 bottom-0 z-10 w-full bg-white rounded-t-3xl shadow-2xl transform transition-all p-6 pb-10 safe-area-bottom">
+                     <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">본문 설정</h3>
+                            <p class="text-xs text-gray-500">글자 크기와 줄 간격을 조절하세요</p>
+                        </div>
+                        <button onclick="toggleSettings()" class="bg-gray-100 rounded-full p-2 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">글자 크기</label>
+                            <div class="grid grid-cols-4 gap-2 bg-gray-100 p-1.5 rounded-xl">
+                                <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size py-3 rounded-lg text-sm font-medium transition-all" data-value="text-base">작게</button>
+                                <button onclick="setReadingStyle('size', 'text-lg')" class="setting-btn-size py-3 rounded-lg text-base font-medium transition-all" data-value="text-lg">보통</button>
+                                <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size py-3 rounded-lg text-xl font-medium transition-all" data-value="text-xl">크게</button>
+                                <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size py-3 rounded-lg text-2xl font-medium transition-all" data-value="text-2xl">더크게</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">줄 간격</label>
+                            <div class="grid grid-cols-3 gap-2 bg-gray-100 p-1.5 rounded-xl">
+                                <button onclick="setReadingStyle('height', 'leading-normal')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-normal">좁게</button>
+                                <button onclick="setReadingStyle('height', 'leading-relaxed')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-relaxed">보통</button>
+                                <button onclick="setReadingStyle('height', 'leading-loose')" class="setting-btn-height py-3 rounded-lg text-sm font-medium transition-all" data-value="leading-loose">넓게</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `;
+
+  // Init Active Buttons
+  setTimeout(() => {
+    initSettingsUI(savedSize, savedHeight);
+  }, 50);
 }
 async function completeReading(dayNumber) {
   try {
