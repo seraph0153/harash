@@ -489,22 +489,23 @@ function renderHorizontalMap(todayDateStr) {
 
     let circleClass = '';
     if (isToday) {
-      circleClass = 'bg-purple-600 text-white ring-4 ring-purple-200 scale-110 shadow-lg z-10';
+      // 🎯 TODAY HIGHLIGHT: 더 눈에 띄게 (scale-125, shadow-xl)
+      circleClass = 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white ring-4 ring-purple-200 ring-offset-2 scale-125 shadow-xl z-20 font-extrabold';
     } else if (visualDone) {
-      circleClass = 'bg-purple-100 border-2 border-purple-300 text-purple-700';
+      circleClass = 'bg-purple-50 border-2 border-purple-200 text-purple-400';
     } else {
-      circleClass = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
+      circleClass = 'bg-gray-50 border-2 border-gray-100 text-gray-300';
     }
 
     const idAttr = isToday ? 'id="today-marker"' : '';
 
     return `
-            <div class="flex flex-col items-center space-y-2 cursor-pointer min-w-[70px]" onclick="showReadingScreen(${day.day_number})">
-                <div class="text-xs font-medium text-gray-500 tracking-tight">${formatSimpleDate(day.date)}</div>
-                <div ${idAttr} class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all ${circleClass}">
+            <div class="flex flex-col items-center space-y-3 cursor-pointer min-w-[70px] pt-2" onclick="showReadingScreen(${day.day_number})">
+                <div class="text-xs font-semibold ${isToday ? 'text-purple-600' : 'text-gray-400'} tracking-tight">${formatSimpleDate(day.date)}</div>
+                <div ${idAttr} class="w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${circleClass}">
                     ${day.day_number}
                 </div>
-                <div class="text-[10px] font-medium text-gray-600 text-center px-1 whitespace-nowrap overflow-hidden max-w-[80px] text-ellipsis">
+                <div class="text-[11px] font-medium ${isToday ? 'text-purple-700 font-bold' : 'text-gray-500'} text-center px-1 whitespace-nowrap overflow-hidden max-w-[90px] text-ellipsis">
                     ${formatRangeText(day.display_text)}
                 </div>
             </div>
