@@ -343,29 +343,35 @@ async function showMapScreen() {
             </div>
             </div>
             
-            <div class="max-w-4xl mx-auto px-4 pb-20 space-y-4">
+            <div class="max-w-full mx-auto pb-20 overflow-x-auto scrollbar-hide">
+            <div class="flex px-4 space-x-4 min-w-max pb-4">
             ${teams.map(t => `
-                <div class="bg-white rounded-xl shadow-sm p-4">
+                <div class="bg-white rounded-xl shadow-sm p-4 w-[340px] flex-none border border-gray-100">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-gray-800">${t.name}</h3>
-                        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">평균 ${Math.round(t.avg_days)}일</span>
+                        <h3 class="font-bold text-gray-800 text-lg">${t.name}</h3>
+                        <span class="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded border border-gray-200">평균 ${Math.round(t.avg_days)}일</span>
                     </div>
-                    <div class="space-y-3">
+                    <div class="space-y-3 h-[240px] overflow-y-auto pr-1 custom-scrollbar">
                         ${t.users.map(u => `
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">${u.avatar_emoji || '😊'}</div>
+                                    <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shadow-sm">${u.avatar_emoji || '😊'}</div>
                                     <div>
-                                        <div class="text-sm font-bold ${u.id === currentUser.id ? 'text-purple-600' : ''}">${u.name} ${u.role === 'team_leader' ? '👑' : ''}</div>
-                                        <div class="text-xs text-gray-500">${u.streak_count}일 연속 🔥</div>
+                                        <div class="text-sm font-bold ${u.id === currentUser.id ? 'text-purple-600' : ''} flex items-center">
+                                            ${u.name} 
+                                            ${u.role === 'team_leader' ? '<span class="ml-1 text-yellow-500 text-xs">👑</span>' : ''}
+                                            ${u.id === currentUser.id ? '<span class="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">ME</span>' : ''}
+                                        </div>
+                                        <div class="text-[10px] text-gray-500">${u.streak_count}일 연속 🔥</div>
                                     </div>
                                 </div>
-                                <div class="text-sm font-bold text-purple-600">${u.total_days_read}일차 완료</div>
+                                <div class="text-sm font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">${u.total_days_read}일차</div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `).join('')}
+            </div>
             </div>
         </div>
         `;
@@ -449,7 +455,28 @@ function renderHorizontalMap(todayDateStr) {
     return text.replace(/장/g, '').trim();
   };
 
-  return biblePlan.map(day => {
+  // 오늘 날짜 인덱스 찾기
+  let todayIndex = biblePlan.findIndex(day => day.date === todayDateStr);
+
+  // 오늘 날짜가 없으면 (범위 밖 등), 적절한 위치 찾기
+  if (todayIndex === -1) {
+    if (biblePlan.length > 0) {
+      if (todayDateStr < biblePlan[0].date) todayIndex = 0;
+      else todayIndex = biblePlan.length - 1;
+    } else {
+      todayIndex = 0;
+    }
+  }
+
+  // 앞뒤 3일 계산 (총 7일)
+  const start = Math.max(0, todayIndex - 3);
+  const end = Math.min(biblePlan.length, todayIndex + 4); // slice는 end 미포함이므로 +4
+  const visibleDays = biblePlan.slice(start, end);
+
+  // 빈 데이터 처리
+  if (visibleDays.length === 0) return '<div class="text-gray-400 text-sm">일정을 불러올 수 없습니다.</div>';
+
+  return visibleDays.map(day => {
     let isPast = false;
     let isToday = false;
 
