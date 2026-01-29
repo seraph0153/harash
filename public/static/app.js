@@ -749,5 +749,13 @@ async function completeReading(dayNumber) {
   }
 }
 
-// Init
-window.addEventListener('DOMContentLoaded', loadUser);
+// Init with Global Error Handling
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    console.log("App initializing...");
+    await loadUser();
+  } catch (e) {
+    console.error("Critical Init Error:", e);
+    alert("앱 초기화 중 오류가 발생했습니다:\n" + e.message);
+  }
+});
