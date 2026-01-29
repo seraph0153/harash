@@ -609,22 +609,19 @@ function setReadingStyle(type, value) {
   if (!container) return;
 
   if (type === 'size') {
-    // Tailwind classes for size
+    // Cleanup old Tailwind classes
     container.classList.remove('text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl');
-    container.classList.add(value);
-    localStorage.setItem('harash_font_size', value);
 
-    // Update Buttons (Size - Dropdown Style)
-    document.querySelectorAll('.setting-btn-size').forEach(btn => {
-      if (btn.dataset.value === value) {
-        btn.classList.add('bg-white', 'shadow', 'text-purple-700');
-        btn.classList.remove('text-gray-500');
-        btn.classList.remove('hover:bg-gray-200'); // Optional cleanup
-      } else {
-        btn.classList.remove('bg-white', 'shadow', 'text-purple-700');
-        btn.classList.add('text-gray-500');
-      }
-    });
+    // Set direct pixel style
+    container.style.fontSize = value + 'px';
+    localStorage.setItem('harash_font_size_val', value);
+
+    // Update Slider UI
+    const slider = document.getElementById('font-size-slider');
+    if (slider && slider.value !== String(value)) slider.value = value;
+
+    const display = document.getElementById('font-size-display');
+    if (display) display.textContent = value + 'px';
 
   } else if (type === 'font') {
     // Direct Style for Fonts
@@ -677,7 +674,9 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   }
 
   // Load Preferences
-  const savedSize = localStorage.getItem('harash_font_size') || 'text-xl';
+  let savedSize = localStorage.getItem('harash_font_size_val');
+  if (!savedSize || isNaN(savedSize)) savedSize = '20'; // Default 20px
+
   const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
   const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
 
@@ -808,14 +807,19 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </div>
                             </div>
                             
-                            <!-- 2. Font Size -->
+                            <!-- 2. Font Size (Slider) -->
                             <div class="mb-5">
-                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Size</label>
-                                <div class="bg-gray-100 p-1 rounded-xl flex">
-                                    <button onclick="setReadingStyle('size', 'text-sm')" class="setting-btn-size flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-500" data-value="text-sm">작게</button>
-                                    <button onclick="setReadingStyle('size', 'text-base')" class="setting-btn-size flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-500" data-value="text-base">보통</button>
-                                    <button onclick="setReadingStyle('size', 'text-xl')" class="setting-btn-size flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-500" data-value="text-xl">크게</button>
-                                    <button onclick="setReadingStyle('size', 'text-2xl')" class="setting-btn-size flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-500" data-value="text-2xl">왕크게</button>
+                                <div class="flex justify-between items-end mb-2">
+                                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Font Size</label>
+                                    <span id="font-size-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">${savedSize}px</span>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xs text-gray-400 font-bold">A</span>
+                                    <input type="range" id="font-size-slider" min="14" max="36" step="1" 
+                                        class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                        value="${savedSize}"
+                                        oninput="setReadingStyle('size', this.value)">
+                                    <span class="text-lg text-gray-400 font-bold">A</span>
                                 </div>
                             </div>
 
@@ -823,12 +827,13 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                             <div>
                                 <div class="flex justify-between items-end mb-2">
                                     <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Line Space</label>
-                                    <span id="line-height-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">1.8</span>
+                                    <span id="line-height-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">${savedHeight}</span>
                                 </div>
-                                <div class="flex items-center space-x-2">
+                                <div class="flex items-center space-x-3">
                                     <i class="fas fa-align-justify text-gray-300 text-xs"></i>
                                     <input type="range" id="line-height-slider" min="1.1" max="2.6" step="0.1" 
                                         class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                        value="${savedHeight}"
                                         oninput="setReadingStyle('height', this.value)">
                                     <i class="fas fa-align-justify text-gray-300 text-lg"></i>
                                 </div>
@@ -844,7 +849,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
             <!-- Content -->
             <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen"> 
-                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative">
+                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-size: ${savedSize}px; line-height: ${savedHeight};">
                     ${contentHTML}
                 </div>
                 
