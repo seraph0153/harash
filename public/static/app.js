@@ -489,15 +489,27 @@ async function showMapScreen(pushHistory = true) {
 
   // 2. 백그라운드 갱신
   try {
-    const [planRes, usersRes] = await Promise.all([
-      apiRequest('getBiblePlan'),
-      apiRequest('getAllUsers')
-    ]);
+    const promises = [];
+
+    // Optimize: Fetch Bible Plan only if not cached or empty
+    if (!biblePlan || biblePlan.length === 0) {
+      console.log("Fetching Bible Plan...");
+      promises.push(apiRequest('getBiblePlan'));
+    } else {
+      console.log("Using Cached Bible Plan");
+      promises.push(Promise.resolve({ status: 'cached', data: biblePlan }));
+    }
+
+    // Always fetch users to sync progress/team data
+    promises.push(apiRequest('getAllUsers'));
+
+    const [planRes, usersRes] = await Promise.all(promises);
 
     if (planRes.status === 'success') {
       localStorage.setItem('harash_cache_plan', JSON.stringify(planRes.data));
       biblePlan = planRes.data;
     }
+
     if (usersRes.status === 'success') {
       localStorage.setItem('harash_cache_users', JSON.stringify(usersRes.data));
       allUsers = usersRes.data;
