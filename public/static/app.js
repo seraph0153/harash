@@ -531,14 +531,18 @@ function renderHorizontalMap(todayDateStr) {
   // 오늘 날짜 인덱스 찾기
   let todayIndex = biblePlan.findIndex(day => day.date === todayDateStr);
 
-  // 오늘 날짜가 없으면 (범위 밖 등), 적절한 위치 찾기
+  // 오늘 날짜가 없으면 (주말 등), 가장 최근의 과거 날짜 찾기
   if (todayIndex === -1) {
-    if (biblePlan.length > 0) {
-      if (todayDateStr < biblePlan[0].date) todayIndex = 0;
-      else todayIndex = biblePlan.length - 1;
-    } else {
-      todayIndex = 0;
+    // 날짜순 정렬 가정 (biblePlan은 보통 정렬되어 있음)
+    // 뒤에서부터 탐색하여 오늘보다 이전인 첫 번째 날짜 찾기
+    for (let i = biblePlan.length - 1; i >= 0; i--) {
+      if (biblePlan[i].date < todayDateStr) {
+        todayIndex = i;
+        break;
+      }
     }
+    // 그래도 없으면 (시작일 이전) -> 0
+    if (todayIndex === -1) todayIndex = 0;
   }
 
   // 앞뒤 3일 계산 (총 7일)
@@ -849,16 +853,16 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                             <div class="mb-5">
                                 <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Typography</label>
                                 <div class="grid grid-cols-2 gap-2">
-                                     <button onclick="setReadingStyle('font', '\'Gowun Batang\', serif')" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Batang', serif">
+                                     <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Batang', serif">
                                         <span style="font-family: 'Gowun Batang', serif">고운바탕</span>
                                     </button>
-                                     <button onclick="setReadingStyle('font', '\'Gowun Dodum\', sans-serif')" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Dodum', sans-serif">
+                                     <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Dodum', sans-serif">
                                         <span style="font-family: 'Gowun Dodum', sans-serif">고운돋움</span>
                                     </button>
-                                     <button onclick="setReadingStyle('font', '\'Noto Serif KR\', serif')" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Serif KR', serif">
+                                     <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Serif KR', serif">
                                         <span style="font-family: 'Noto Serif KR', serif">본문명조</span>
                                     </button>
-                                     <button onclick="setReadingStyle('font', '\'Noto Sans KR\', sans-serif')" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Sans KR', sans-serif">
+                                     <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Sans KR', sans-serif">
                                         <span style="font-family: 'Noto Sans KR', sans-serif">본문고딕</span>
                                     </button>
                                 </div>
