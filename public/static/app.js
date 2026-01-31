@@ -614,6 +614,17 @@ function getRoleKorean(role) {
 }
 
 // -----------------------------------------------------------
+// 🔄 DATA REFRESH FUNCTION
+// -----------------------------------------------------------
+function refreshData() {
+  if (confirm('모든 데이터를 새로고침 하시겠습니까?\n(약간의 시간이 소요될 수 있습니다)')) {
+    localStorage.removeItem('harash_cache_plan');
+    localStorage.removeItem('harash_cache_users');
+    location.reload();
+  }
+}
+
+// -----------------------------------------------------------
 // VIEW CONTROLLERS (Settings Helpers)
 // -----------------------------------------------------------
 
@@ -903,15 +914,16 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                     <span id="line-height-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">${savedHeight}</span>
                                 </div>
                                 <div class="flex items-center space-x-3">
-                                    <i class="fas fa-align-justify text-gray-300 text-xs"></i>
-                                    <input type="range" id="line-height-slider" min="1.1" max="2.6" step="0.1" 
-                                        class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                                        value="${savedHeight}"
-                                        oninput="setReadingStyle('height', this.value)">
                                     <i class="fas fa-align-justify text-gray-300 text-lg"></i>
                                 </div>
                             </div>
 
+                            <!-- 4. Data Refresh -->
+                            <div class="pt-4 border-t border-gray-100 mt-4">
+                                <button onclick="refreshData()" class="w-full py-2.5 rounded-xl bg-gray-50 text-gray-600 text-xs font-bold hover:bg-gray-100 hover:text-purple-600 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-sync-alt mr-2"></i> 데이터 새로고침 (업데이트 확인)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
