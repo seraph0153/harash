@@ -506,8 +506,24 @@ async function showMapScreen(pushHistory = true) {
     const [planRes, usersRes] = await Promise.all(promises);
 
     if (planRes.status === 'success') {
-      localStorage.setItem('harash_cache_plan', JSON.stringify(planRes.data));
-      biblePlan = planRes.data;
+      // Normalize Keys (API returns BookName, app uses book_name)
+      const data = planRes.data.map(item => {
+        // Skip header row if it exists (check if day_number is not a number string)
+        if (item.DayNum === '읽기일차' || item.day_number === '읽기일차') return null;
+
+        return {
+          ...item,
+          day_number: Number(item.DayNum || item.day_number),
+          date: item.Date || item.date,
+          display_text: item.BookName || item.display_text,
+          book_name: item.BookName || item.book_name, // Fallback
+          start_chapter: item.StartCh || item.start_chapter,
+          end_chapter: item.EndCh || item.end_chapter
+        };
+      }).filter(item => item !== null); // Filter out header/nulls
+
+      localStorage.setItem('harash_cache_plan', JSON.stringify(data));
+      biblePlan = data;
     }
 
     if (usersRes.status === 'success') {
