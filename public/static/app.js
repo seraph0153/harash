@@ -515,7 +515,10 @@ async function showMapScreen(pushHistory = true) {
           ...item,
           day_number: Number(item.DayNum || item.day_number),
           date: item.Date || item.date,
-          display_text: item.BookName || item.display_text,
+          // FIX: Hard override for Day 20 (API returns Job 1-2, but should be 1-3)
+          display_text: (Number(item.DayNum || item.day_number) === 20)
+            ? "에스더 8-10장, 욥기 1-3장"
+            : (item.BookName || item.display_text),
           book_name: item.BookName || item.book_name, // Fallback
           start_chapter: item.StartCh || item.start_chapter,
           end_chapter: item.EndCh || item.end_chapter
