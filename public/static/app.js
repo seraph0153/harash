@@ -794,7 +794,15 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Parse ranges from display_text if not pre-parsed
   let ranges = plan.ranges;
-  if (!ranges || ranges.length === 0) {
+
+  // EMERGENCY FIX: Job 1-3 Override (Day 20)
+  // Force specific ranges for Day 20 to resolve persistent data mismatch
+  if (Number(dayNumber) === 20) {
+    ranges = [
+      { book: '에스더', start: 8, end: 10 },
+      { book: '욥기', start: 1, end: 3 }
+    ];
+  } else if (!ranges || ranges.length === 0) {
     // Try parsing from display_text (e.g., "에스더 8-10장, 욥기 1-3장")
     ranges = parseComplexBibleReference(plan.display_text);
 
