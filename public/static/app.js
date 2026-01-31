@@ -740,7 +740,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   }
 
   localStorage.setItem('harash_last_reading_day', dayNumber);
-  const plan = biblePlan.find(d => d.day_number === dayNumber);
+  const plan = biblePlan.find(d => Number(d.day_number) === Number(dayNumber));
 
   if (!plan) {
     alert("해당 일차의 데이터를 찾을 수 없습니다.");
