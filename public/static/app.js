@@ -714,9 +714,9 @@ function parseComplexBibleReference(text) {
   const ranges = [];
 
   for (const part of parts) {
-    // Match pattern: "BookName StartChapter-EndChapter장" or "BookName Chapter장"
-    // Examples: "에스더 8-10장", "욥기 1-3장", "창세기 1장"
-    const match = part.match(/^(.+?)\s+(\d+)(?:-(\d+))?장?$/);
+    // Match pattern: "BookName StartChapter-EndChapter장" (flexible spacing)
+    // Examples: "에스더 8-10장", "욥기 1 - 3 장", "창세기 1장"
+    const match = part.match(/^(.+?)\s*(\d+)(?:\s*-\s*(\d+))?장?$/);
 
     if (match) {
       const bookName = match[1].trim();
