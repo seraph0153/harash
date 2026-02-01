@@ -4,7 +4,7 @@
  */
 
 // ✅ Google Apps Script 백엔드 URL (Updated 2026-01-31 - New Deployment)
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyZaqT36ecoeFcRwGD_TEQ7o_0CUIpueyUS_h9MHCR7MXiwD1FWPKDw7BRg1G1AewD1/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyCS_P9eLa7PDcHkXdwC2aIhq7uHijsIZ8bHwglS-B_vrKGfjuOZ2uWH7Q_jv7me-C0/exec';
 
 /**
  * Google Apps Script API 호출 헬퍼
