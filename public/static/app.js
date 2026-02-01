@@ -510,15 +510,24 @@ async function showMapScreen(pushHistory = true) {
     if (planRes.status === 'success') {
       // Normalize Keys (API returns BookName, app uses book_name)
       const data = planRes.data.map(item => {
-        // Skip header row if it exists (check if day_number is not a number string)
-        if (item.DayNum === '읽기일차' || item.day_number === '읽기일차') return null;
+        // Raw values
+        const rawDay = item.DayNum || item.day_number;
+
+        // Skip header row if "일차" exists in value but no numbers, or strictly '읽기일차'
+        if (!rawDay || rawDay === '읽기일차') return null;
+
+        // Robust Parsing: "15일차" -> 15
+        const dayNum = parseInt(String(rawDay).replace(/[^0-9]/g, ''), 10);
+
+        // If parsing failed (NaN) or 0, skip
+        if (!dayNum || isNaN(dayNum)) return null;
 
         return {
           ...item,
-          day_number: Number(item.DayNum || item.day_number),
+          day_number: dayNum,
           date: item.Date || item.date,
           // FIX: Hard override for Day 20 (API returns Job 1-2, but should be 1-3)
-          display_text: (Number(item.DayNum || item.day_number) === 20)
+          display_text: (dayNum === 20)
             ? "에스더 8-10장, 욥기 1-3장"
             : (item.BookName || item.display_text),
           book_name: item.BookName || item.book_name, // Fallback
