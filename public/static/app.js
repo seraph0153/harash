@@ -4,7 +4,9 @@
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
 // ⚡️ 중요: 배포한 Google Apps Script 웹 앱 URL을 여기에 넣으세요!
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzliU5nMvwnznlC4HqDaXvqtuh1oIITXv_tjKaw4AEkjWjHptnLtjzsDHEO8Lhi7hWj/exec";
+// ⚡️ 중요: 배포한 Google Apps Script 웹 앱 URL을 여기에 넣으세요!
+// NOTE: Now using GAS_API_URL from api-config.js
+const API_BASE_URL = typeof GAS_API_URL !== 'undefined' ? GAS_API_URL : '';
 
 // 전역 상태
 let currentUser = null;
