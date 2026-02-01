@@ -1257,6 +1257,11 @@ async function showAdminScreen() {
           <button onclick="showMapScreen()" class="bg-purple-600 text-white px-6 py-2 rounded-lg">
             돌아가기
           </button>
+          <div class="mt-4">
+            <button onclick="refreshData()" class="text-xs text-gray-500 underline">
+              🔄 데이터 초기화 (오류 해결)
+            </button>
+          </div>
         </div>
       </div>
     `;
