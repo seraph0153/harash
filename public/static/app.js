@@ -474,9 +474,32 @@ async function showMapScreen(pushHistory = true) {
     try {
       const parsedPlan = JSON.parse(cachedPlan);
       const parsedUsers = JSON.parse(cachedUsers);
-      renderUI(parsedPlan, parsedUsers, currentUser);
+
+      // Validate Cache (Prevent "null" day_number issue)
+      const isValidCache = parsedPlan.every(p => p.day_number && !isNaN(p.day_number));
+
+      if (isValidCache) {
+        renderUI(parsedPlan, parsedUsers, currentUser);
+        // Set global variables from cache so we don't refetch unnecessarily
+        if (!biblePlan || biblePlan.length === 0) biblePlan = parsedPlan;
+        if (!allUsers || allUsers.length === 0) allUsers = parsedUsers;
+      } else {
+        console.warn("Corrupted Cache Detected. Clearing and refetching...");
+        localStorage.removeItem('harash_cache_plan');
+        cachedPlan = null; // Force fetch
+        // Show loading state
+        app.innerHTML = `
+            <div class="min-h-screen flex items-center justify-center bg-gray-50">
+                <div class="text-center">
+                    <div class="animate-spin text-4xl mb-4 text-purple-600">⏳</div>
+                    <p class="text-gray-500">데이터를 다시 받아오는 중입니다...</p>
+                </div>
+            </div>
+        `;
+      }
     } catch (e) {
       console.error("Cache parsing error", e);
+      localStorage.removeItem('harash_cache_plan');
     }
   } else {
     app.innerHTML = `
