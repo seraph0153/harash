@@ -1310,7 +1310,7 @@ function handleDragStart(e) {
   const target = e.target.closest('.user-card');
   if (!target) return;
 
-  console.log('Drag Start:', target.dataset.userPhone);
+  logToScreen(`Drag Start: ${target.dataset.userPhone}`);
 
   // 🚫 Prevent text selection interference
   if (window.getSelection) {
@@ -1326,7 +1326,7 @@ function handleDragStart(e) {
 }
 
 function handleDragEnd(e) {
-  console.log('Drag End');
+  logToScreen('Drag End');
   e.target.style.opacity = '1';
   document.querySelectorAll('.team-drop-zone').forEach(el => {
     el.style.backgroundColor = '';
@@ -1347,7 +1347,7 @@ async function handleDrop(e) {
   e.preventDefault();
   e.stopPropagation();
 
-  console.log('Drop Detected');
+  logToScreen('Drop Detected');
 
   const dropZone = e.currentTarget;
   dropZone.style.backgroundColor = '';
@@ -1356,7 +1356,7 @@ async function handleDrop(e) {
   const phone = draggedUserPhone || e.dataTransfer.getData('text/plain');
 
   if (!phone) {
-    console.warn("No phone number found for drop");
+    logToScreen("No phone found");
     return;
   }
 
@@ -1366,7 +1366,17 @@ async function handleDrop(e) {
     newTeamId = Number(newTeamId);
   }
 
-  console.log(`Moving user ${phone} to team ${newTeamId}`);
+  logToScreen(`Moving to Team: ${newTeamId}`);
+
+  // ⚡️ Optimistic UI: Move Element Immediately
+  // Find the dragged element in the DOM (assuming unique phone)
+  const draggedElement = document.querySelector(`.user-card[data-user-phone="${phone}"]`);
+  if (draggedElement) {
+    dropZone.appendChild(draggedElement);
+    // Remove "empty" message if it exists
+    const emptyMsg = dropZone.querySelector('.text-center');
+    if (emptyMsg) emptyMsg.style.display = 'none';
+  }
 
   try {
     const res = await apiRequest('updateUserTeam', {
@@ -1375,16 +1385,46 @@ async function handleDrop(e) {
     });
 
     if (res.status === 'success') {
-      showAdminScreen();
+      logToScreen('Server Sync Success');
+      // No need to refresh entire screen, already moved
     } else {
+      logToScreen(`Server Error: ${res.error}`);
       alert('팀 이동 실패: ' + (res.error || '알 수 없는 오류'));
+      showAdminScreen(); // Revert
     }
   } catch (e) {
-    console.error(e);
+    logToScreen(`Network Error: ${e.message}`);
     alert('팀 이동 중 오류가 발생했습니다.');
+    showAdminScreen(); // Revert
   }
 
   draggedUserPhone = null;
+}
+
+// ⚡️ Visual Logger for Debugging
+function logToScreen(msg) {
+  let consol = document.getElementById('debug-console');
+  if (!consol) {
+    consol = document.createElement('div');
+    consol.id = 'debug-console';
+    consol.style.position = 'fixed';
+    consol.style.bottom = '0';
+    consol.style.left = '0';
+    consol.style.width = '100%';
+    consol.style.height = '150px';
+    consol.style.overflowY = 'scroll';
+    consol.style.background = 'rgba(0,0,0,0.8)';
+    consol.style.color = '#00ff00';
+    consol.style.fontSize = '12px';
+    consol.style.fontFamily = 'monospace';
+    consol.style.padding = '10px';
+    consol.style.zIndex = '10000';
+    document.body.appendChild(consol);
+  }
+  const line = document.createElement('div');
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  consol.insertBefore(line, consol.firstChild);
+  console.log(msg);
 }
 
 // ⚡️ Touch Handlers for Mobile
@@ -1397,6 +1437,8 @@ function handleTouchStart(e) {
   touchSrcElement = target;
   draggedUserPhone = target.dataset.userPhone;
 
+  logToScreen(`Touch Start: ${draggedUserPhone}`);
+
   // Create Ghost Element
   touchClone = target.cloneNode(true);
   touchClone.style.position = 'fixed';
@@ -1405,8 +1447,6 @@ function handleTouchStart(e) {
   touchClone.style.pointerEvents = 'none'; // Allow touch to pass through to element below
   touchClone.style.width = target.offsetWidth + 'px';
   touchClone.style.background = '#fff';
-  touchClone.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
-  touchClone.style.transform = 'scale(1.05)';
 
   // Initial Position
   const touch = e.touches[0];
@@ -1438,6 +1478,8 @@ function handleTouchEnd(e) {
   if (!touchClone) return;
   const touch = e.changedTouches[0];
 
+  logToScreen('Touch End Detected');
+
   // Identify Drop Zone
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
   let dropZone = elemBelow ? elemBelow.closest('.team-drop-zone') : null;
@@ -1446,7 +1488,7 @@ function handleTouchEnd(e) {
   if (touchClone) document.body.removeChild(touchClone);
   touchClone = null;
   if (touchSrcElement) touchSrcElement.style.opacity = '1';
-  touchSrcElement = null;
+
 
   document.querySelectorAll('.team-drop-zone').forEach(el => el.style.backgroundColor = '');
 
@@ -1457,23 +1499,35 @@ function handleTouchEnd(e) {
       newTeamId = Number(newTeamId);
     }
 
-    console.log(`Mobile Drop: Moving user ${draggedUserPhone} to team ${newTeamId}`);
+    logToScreen(`Moving to Team: ${newTeamId}`);
+
+    // ⚡️ Optimistic UI: Move Element Immediately
+    if (touchSrcElement) {
+      dropZone.appendChild(touchSrcElement);
+    }
 
     apiRequest('updateUserTeam', {
       phone: draggedUserPhone,
       teamId: newTeamId
     }).then(res => {
       if (res.status === 'success') {
-        showAdminScreen();
+        logToScreen('Server Sync Success');
       } else {
-        alert('팀 이동 실패: ' + (res.error || '오류'));
+        logToScreen(`Server Error: ${res.error}`);
+        alert('이동 실패. 새로고침합니다.');
+        showAdminScreen(); // Revert
       }
     }).catch(err => {
-      console.error(err);
-      alert('팀 이동 중 오류 발생');
+      logToScreen(`Network Error: ${err.message}`);
+      alert('오류 발생. 새로고침합니다.');
+      showAdminScreen();
     });
 
     draggedUserPhone = null;
+    touchSrcElement = null;
+  } else {
+    logToScreen('No valid drop zone found');
+    touchSrcElement = null;
   }
 }
 
@@ -1488,7 +1542,7 @@ window.handleTouchEnd = handleTouchEnd;
 
 // ⚡️ Attach Event Listeners Programmatically (Fix for Scope/Inline Issues)
 function attachDragListeners() {
-  console.log('Attaching Drag & Drop Listeners...');
+  logToScreen('Attaching Drag Listeners...');
 
   // User Cards (Draggables)
   document.querySelectorAll('.user-card').forEach(card => {
