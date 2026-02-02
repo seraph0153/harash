@@ -1360,7 +1360,12 @@ async function handleDrop(e) {
     return;
   }
 
-  const newTeamId = parseInt(dropZone.dataset.teamId);
+  let newTeamId = dropZone.dataset.teamId;
+  // If it's a number-like string (e.g., "1", "9999"), convert to Number to match DB format
+  if (!isNaN(newTeamId) && newTeamId.trim() !== '') {
+    newTeamId = Number(newTeamId);
+  }
+
   console.log(`Moving user ${phone} to team ${newTeamId}`);
 
   try {
@@ -1447,7 +1452,11 @@ function handleTouchEnd(e) {
 
   if (dropZone && draggedUserPhone) {
     // Manually trigger drop logic
-    const newTeamId = parseInt(dropZone.dataset.teamId);
+    let newTeamId = dropZone.dataset.teamId;
+    if (!isNaN(newTeamId) && newTeamId.trim() !== '') {
+      newTeamId = Number(newTeamId);
+    }
+
     console.log(`Mobile Drop: Moving user ${draggedUserPhone} to team ${newTeamId}`);
 
     apiRequest('updateUserTeam', {
