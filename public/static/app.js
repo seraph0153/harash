@@ -760,14 +760,24 @@ function setReadingStyle(type, value) {
 
     const display = document.getElementById('line-height-display');
     if (display) display.textContent = value;
+
+  } else if (type === 'weight') {
+    // Font Weight (Bold)
+    container.style.fontWeight = value;
+    localStorage.setItem('harash_font_weight', value);
+
+    // Sync Toggle UI
+    const toggle = document.getElementById('font-weight-toggle');
+    if (toggle) toggle.checked = (value === 'bold');
   }
 }
 
-function initSettingsUI(currentSize, currentFont, currentHeight) {
+function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight) {
   // Apply all
   setReadingStyle('size', currentSize);
   setReadingStyle('font', currentFont);
   setReadingStyle('height', currentHeight);
+  setReadingStyle('weight', currentWeight || 'normal');
 }
 
 // ============================================
@@ -1668,9 +1678,90 @@ function showProfileSettings() {
 
         </div>
 
+        <!-- ========================== -->
+        <!-- 📖 READING SETTINGS RESTORED -->
+        <!-- ========================== -->
+        <div class="bg-gray-50 rounded-2xl p-5 mt-4 border border-gray-100">
+          <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-font text-purple-600 mr-2"></i> 읽기 설정
+          </h3>
+          
+          <!-- Font Family -->
+          <div class="mb-5">
+            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Typography</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Batang', serif">
+                <span style="font-family: 'Gowun Batang', serif">고운바탕</span>
+              </button>
+              <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Gowun Dodum', sans-serif">
+                <span style="font-family: 'Gowun Dodum', sans-serif">고운돋움</span>
+              </button>
+              <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Serif KR', serif">
+                <span style="font-family: 'Noto Serif KR', serif">본문명조</span>
+              </button>
+              <button onclick="setReadingStyle('font', this.dataset.value)" class="setting-btn-font px-2 py-2 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-sm hover:bg-gray-100 transition-colors" data-value="'Noto Sans KR', sans-serif">
+                <span style="font-family: 'Noto Sans KR', sans-serif">본문고딕</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Font Size (Slider) -->
+          <div class="mb-5">
+            <div class="flex justify-between items-end mb-2">
+              <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Font Size</label>
+              <span id="font-size-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">20px</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <span class="text-xs text-gray-400 font-bold">A</span>
+              <input type="range" id="font-size-slider" min="14" max="36" step="1" 
+                class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                oninput="setReadingStyle('size', this.value)">
+              <span class="text-lg text-gray-400 font-bold">A</span>
+            </div>
+          </div>
+
+          <!-- Line Height (Slider) -->
+          <div class="mb-5">
+            <div class="flex justify-between items-end mb-2">
+              <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Line Space</label>
+              <span id="line-height-display" class="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">1.8</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-align-justify text-gray-300 text-lg"></i>
+              <input type="range" id="line-height-slider" min="1.2" max="2.5" step="0.1" 
+                class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                oninput="setReadingStyle('height', this.value)">
+            </div>
+          </div>
+
+          <!-- Bold Toggle (New) -->
+          <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+            <label class="font-bold text-sm text-gray-600">글자 굵게 (Bold)</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="font-weight-toggle" class="sr-only peer" onchange="setReadingStyle('weight', this.checked ? 'bold' : 'normal')">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+        </div>
+        <!-- End Reading Settings -->
+
+        <!-- Logout Button -->
+        <div class="text-center mt-6">
+          <button onclick="logout()" class="text-red-500 font-semibold hover:text-red-700 transition-colors">로그아웃</button>
+        </div>
+
       </div>
     </div>
   `;
+
+  // Init Settings
+  const savedSize = localStorage.getItem('harash_font_size_val') || '20';
+  const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
+  const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
+  const savedWeight = localStorage.getItem('harash_font_weight') || 'normal';
+
+  initSettingsUI(savedSize, savedFont, savedHeight, savedWeight);
 }
 
 // Tab Switcher
