@@ -1226,7 +1226,7 @@ async function showAdminScreen() {
           </div>
         </div>
         
-        <div class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        <div class="max-w-[95%] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           ${teamIds.map(teamId => {
       const teamUsers = teamMap[teamId];
       const teamName = teamId == 0 ? '미배정' : `팀 ${teamId}`;
@@ -1310,7 +1310,7 @@ function handleDragStart(e) {
   const target = e.target.closest('.user-card');
   if (!target) return;
 
-  logToScreen(`Drag Start: ${target.dataset.userPhone}`);
+  // console.log('Drag Start:', target.dataset.userPhone);
 
   // 🚫 Prevent text selection interference
   if (window.getSelection) {
@@ -1326,7 +1326,7 @@ function handleDragStart(e) {
 }
 
 function handleDragEnd(e) {
-  logToScreen('Drag End');
+  // console.log('Drag End');
   e.target.style.opacity = '1';
   document.querySelectorAll('.team-drop-zone').forEach(el => {
     el.style.backgroundColor = '';
@@ -1347,7 +1347,7 @@ async function handleDrop(e) {
   e.preventDefault();
   e.stopPropagation();
 
-  logToScreen('Drop Detected');
+  console.log('Drop Detected');
 
   const dropZone = e.currentTarget;
   dropZone.style.backgroundColor = '';
@@ -1356,7 +1356,7 @@ async function handleDrop(e) {
   const phone = draggedUserPhone || e.dataTransfer.getData('text/plain');
 
   if (!phone) {
-    logToScreen("No phone found");
+    console.warn("No phone number found for drop");
     return;
   }
 
@@ -1366,7 +1366,7 @@ async function handleDrop(e) {
     newTeamId = Number(newTeamId);
   }
 
-  logToScreen(`Moving to Team: ${newTeamId}`);
+  console.log(`Moving to Team: ${newTeamId}`);
 
   // ⚡️ Optimistic UI: Move Element Immediately
   // Find the dragged element in the DOM (assuming unique phone)
@@ -1385,15 +1385,15 @@ async function handleDrop(e) {
     });
 
     if (res.status === 'success') {
-      logToScreen('Server Sync Success');
+      console.log('Server Sync Success');
       // No need to refresh entire screen, already moved
     } else {
-      logToScreen(`Server Error: ${res.error}`);
+      console.error(`Server Error: ${res.error}`);
       alert('팀 이동 실패: ' + (res.error || '알 수 없는 오류'));
       showAdminScreen(); // Revert
     }
   } catch (e) {
-    logToScreen(`Network Error: ${e.message}`);
+    console.error(`Network Error: ${e.message}`);
     alert('팀 이동 중 오류가 발생했습니다.');
     showAdminScreen(); // Revert
   }
@@ -1401,31 +1401,7 @@ async function handleDrop(e) {
   draggedUserPhone = null;
 }
 
-// ⚡️ Visual Logger for Debugging
-function logToScreen(msg) {
-  let consol = document.getElementById('debug-console');
-  if (!consol) {
-    consol = document.createElement('div');
-    consol.id = 'debug-console';
-    consol.style.position = 'fixed';
-    consol.style.bottom = '0';
-    consol.style.left = '0';
-    consol.style.width = '100%';
-    consol.style.height = '150px';
-    consol.style.overflowY = 'scroll';
-    consol.style.background = 'rgba(0,0,0,0.8)';
-    consol.style.color = '#00ff00';
-    consol.style.fontSize = '12px';
-    consol.style.fontFamily = 'monospace';
-    consol.style.padding = '10px';
-    consol.style.zIndex = '10000';
-    document.body.appendChild(consol);
-  }
-  const line = document.createElement('div');
-  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  consol.insertBefore(line, consol.firstChild);
-  console.log(msg);
-}
+
 
 // ⚡️ Touch Handlers for Mobile
 let touchClone = null;
@@ -1437,7 +1413,7 @@ function handleTouchStart(e) {
   touchSrcElement = target;
   draggedUserPhone = target.dataset.userPhone;
 
-  logToScreen(`Touch Start: ${draggedUserPhone}`);
+  // console.log(`Touch Start: ${draggedUserPhone}`);
 
   // Create Ghost Element
   touchClone = target.cloneNode(true);
@@ -1478,7 +1454,7 @@ function handleTouchEnd(e) {
   if (!touchClone) return;
   const touch = e.changedTouches[0];
 
-  logToScreen('Touch End Detected');
+  // console.log('Touch End Detected');
 
   // Identify Drop Zone
   const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -1499,7 +1475,7 @@ function handleTouchEnd(e) {
       newTeamId = Number(newTeamId);
     }
 
-    logToScreen(`Moving to Team: ${newTeamId}`);
+    console.log(`Moving to Team: ${newTeamId}`);
 
     // ⚡️ Optimistic UI: Move Element Immediately
     if (touchSrcElement) {
@@ -1511,14 +1487,14 @@ function handleTouchEnd(e) {
       teamId: newTeamId
     }).then(res => {
       if (res.status === 'success') {
-        logToScreen('Server Sync Success');
+        console.log('Server Sync Success');
       } else {
-        logToScreen(`Server Error: ${res.error}`);
+        console.error(`Server Error: ${res.error}`);
         alert('이동 실패. 새로고침합니다.');
         showAdminScreen(); // Revert
       }
     }).catch(err => {
-      logToScreen(`Network Error: ${err.message}`);
+      console.error(`Network Error: ${err.message}`);
       alert('오류 발생. 새로고침합니다.');
       showAdminScreen();
     });
@@ -1526,7 +1502,7 @@ function handleTouchEnd(e) {
     draggedUserPhone = null;
     touchSrcElement = null;
   } else {
-    logToScreen('No valid drop zone found');
+    // logToScreen('No valid drop zone found');
     touchSrcElement = null;
   }
 }
@@ -1542,7 +1518,7 @@ window.handleTouchEnd = handleTouchEnd;
 
 // ⚡️ Attach Event Listeners Programmatically (Fix for Scope/Inline Issues)
 function attachDragListeners() {
-  logToScreen('Attaching Drag Listeners...');
+  console.log('Attaching Drag Listeners...');
 
   // User Cards (Draggables)
   document.querySelectorAll('.user-card').forEach(card => {
