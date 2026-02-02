@@ -1249,11 +1249,14 @@ async function showAdminScreen() {
                 >
                   ${teamUsers.map(user => `
                     <div 
-                      class="bg-gray-50 rounded-lg p-3 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card"
+                      class="bg-gray-50 rounded-lg p-3 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none"
                       draggable="true"
                       data-user-phone="${user.phone}"
                       ondragstart="handleDragStart(event)"
                       ondragend="handleDragEnd(event)"
+                      ontouchstart="handleTouchStart(event)"
+                      ontouchmove="handleTouchMove(event)"
+                      ontouchend="handleTouchEnd(event)"
                     >
                       <div class="flex items-center space-x-3">
                         <div class="text-2xl">${user.avatar_emoji || '👤'}</div>
@@ -1374,11 +1377,100 @@ async function handleDrop(e) {
   draggedUserPhone = null;
 }
 
-// ⚡️ Expose Drag Handlers to Window (Fix for Scope Issue)
+// ⚡️ Touch Handlers for Mobile
+let touchClone = null;
+let touchSrcElement = null;
+
+function handleTouchStart(e) {
+  if (e.touches.length > 1) return; // Ignore multi-touch
+  const target = e.currentTarget; // The user-card div
+  touchSrcElement = target;
+  draggedUserPhone = target.dataset.userPhone;
+
+  // Create Ghost Element
+  touchClone = target.cloneNode(true);
+  touchClone.style.position = 'fixed';
+  touchClone.style.zIndex = '9999';
+  touchClone.style.opacity = '0.8';
+  touchClone.style.pointerEvents = 'none'; // Allow touch to pass through to element below
+  touchClone.style.width = target.offsetWidth + 'px';
+  touchClone.style.background = '#fff';
+  touchClone.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+  touchClone.style.transform = 'scale(1.05)';
+
+  // Initial Position
+  const touch = e.touches[0];
+  touchClone.style.left = (touch.clientX - 20) + 'px';
+  touchClone.style.top = (touch.clientY - 20) + 'px';
+
+  document.body.appendChild(touchClone);
+  target.style.opacity = '0.4';
+}
+
+function handleTouchMove(e) {
+  if (!touchClone) return;
+  e.preventDefault(); // Prevent scrolling while dragging
+
+  const touch = e.touches[0];
+  touchClone.style.left = (touch.clientX - 20) + 'px';
+  touchClone.style.top = (touch.clientY - 20) + 'px';
+
+  // Optional: Highlight drop zone
+  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (elemBelow) {
+    const dropZone = elemBelow.closest('.team-drop-zone');
+    document.querySelectorAll('.team-drop-zone').forEach(el => el.style.backgroundColor = '');
+    if (dropZone) dropZone.style.backgroundColor = '#f3f4f6';
+  }
+}
+
+function handleTouchEnd(e) {
+  if (!touchClone) return;
+  const touch = e.changedTouches[0];
+
+  // Identify Drop Zone
+  const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+  let dropZone = elemBelow ? elemBelow.closest('.team-drop-zone') : null;
+
+  // Cleanup
+  if (touchClone) document.body.removeChild(touchClone);
+  touchClone = null;
+  if (touchSrcElement) touchSrcElement.style.opacity = '1';
+  touchSrcElement = null;
+
+  document.querySelectorAll('.team-drop-zone').forEach(el => el.style.backgroundColor = '');
+
+  if (dropZone && draggedUserPhone) {
+    // Manually trigger drop logic
+    const newTeamId = parseInt(dropZone.dataset.teamId);
+    console.log(`Mobile Drop: Moving user ${draggedUserPhone} to team ${newTeamId}`);
+
+    apiRequest('updateUserTeam', {
+      phone: draggedUserPhone,
+      teamId: newTeamId
+    }).then(res => {
+      if (res.status === 'success') {
+        showAdminScreen();
+      } else {
+        alert('팀 이동 실패: ' + (res.error || '오류'));
+      }
+    }).catch(err => {
+      console.error(err);
+      alert('팀 이동 중 오류 발생');
+    });
+
+    draggedUserPhone = null;
+  }
+}
+
+// ⚡️ Expose Drag & Touch Handlers
 window.handleDragStart = handleDragStart;
 window.handleDragEnd = handleDragEnd;
 window.handleDragOver = handleDragOver;
 window.handleDrop = handleDrop;
+window.handleTouchStart = handleTouchStart;
+window.handleTouchMove = handleTouchMove;
+window.handleTouchEnd = handleTouchEnd;
 
 // Init with Global Error Handling
 window.addEventListener('DOMContentLoaded', async () => {
