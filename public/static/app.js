@@ -403,7 +403,11 @@ async function showMapScreen(pushHistory = true) {
         <div class="min-h-screen bg-gray-50">
             <div class="bg-white sticky top-0 z-50 shadow-sm p-4 flex justify-between items-center">
                 <div class="flex items-center space-x-2">
-                    <button onclick="showProfileSettings()" class="text-2xl hover:scale-110 transition-transform">${currentUser.avatar_emoji || '😊'}</button>
+                    <button onclick="showProfileSettings()" class="w-10 h-10 rounded-full overflow-hidden border border-gray-200 hover:scale-110 transition-transform bg-gray-50 flex items-center justify-center text-2xl">
+                        ${currentUser.avatar_url
+        ? `<img src="${currentUser.avatar_url}" class="w-full h-full object-cover">`
+        : (currentUser.avatar_emoji || '😊')}
+                    </button>
                     <div>
                     <div class="font-bold flex items-center">
                         ${currentUser.name} 
@@ -438,7 +442,12 @@ async function showMapScreen(pushHistory = true) {
                         ${t.users.map(u => `
                             <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shadow-sm">${u.avatar_emoji || '😊'}</div>
+                                    <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl shadow-sm border border-gray-100 overflow-hidden">
+                                        ${u.avatar_url
+            ? `<img src="${u.avatar_url}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">`
+            : ''}
+                                        <span class="${u.avatar_url ? 'hidden' : 'flex'} w-full h-full items-center justify-center">${u.avatar_emoji || '😊'}</span>
+                                    </div>
                                     <div>
                                         <div class="text-sm font-bold ${u.id === currentUser.id ? 'text-purple-600' : ''} flex items-center">
                                             ${u.name} 
@@ -1252,7 +1261,11 @@ async function showAdminScreen() {
                       data-user-phone="${user.phone}"
                     >
                       <div class="flex items-center space-x-3">
-                        <div class="text-2xl">${user.avatar_emoji || '👤'}</div>
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl overflow-hidden border border-gray-100">
+                             ${user.avatar_url
+          ? `<img src="${user.avatar_url}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerText='${user.avatar_emoji || '👤'}'">`
+          : (user.avatar_emoji || '👤')}
+                        </div>
                         <div>
                           <div class="font-semibold text-gray-800">${user.name}</div>
                           <div class="text-xs text-gray-500">${getRoleKorean(user.role)}</div>
