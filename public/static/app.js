@@ -1308,20 +1308,27 @@ async function showAdminScreen() {
 let draggedUserPhone = null;
 
 function handleDragStart(e) {
+  console.log('Drag Start:', e.target.dataset.userPhone);
   draggedUserPhone = e.target.dataset.userPhone;
   e.target.style.opacity = '0.4';
+
+  // ⚡️ Required for Firefox and some browsers to initiate drag
   e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', draggedUserPhone);
 }
 
 function handleDragEnd(e) {
+  console.log('Drag End');
   e.target.style.opacity = '1';
+  document.querySelectorAll('.team-drop-zone').forEach(el => {
+    el.style.backgroundColor = '';
+  });
 }
 
 function handleDragOver(e) {
-  e.preventDefault();
+  e.preventDefault(); // Necessary to allow dropping
   e.dataTransfer.dropEffect = 'move';
 
-  // Visual feedback
   const dropZone = e.currentTarget;
   if (dropZone.classList.contains('team-drop-zone')) {
     dropZone.style.backgroundColor = '#f3f4f6';
@@ -1332,21 +1339,29 @@ async function handleDrop(e) {
   e.preventDefault();
   e.stopPropagation();
 
+  console.log('Drop Detected');
+
   const dropZone = e.currentTarget;
   dropZone.style.backgroundColor = '';
 
-  if (!draggedUserPhone) return;
+  // Retrieve phone from dataTransfer if global is lost
+  const phone = draggedUserPhone || e.dataTransfer.getData('text/plain');
+
+  if (!phone) {
+    console.warn("No phone number found for drop");
+    return;
+  }
 
   const newTeamId = parseInt(dropZone.dataset.teamId);
+  console.log(`Moving user ${phone} to team ${newTeamId}`);
 
   try {
     const res = await apiRequest('updateUserTeam', {
-      phone: draggedUserPhone,
+      phone: phone,
       teamId: newTeamId
     });
 
     if (res.status === 'success') {
-      // Refresh admin screen
       showAdminScreen();
     } else {
       alert('팀 이동 실패: ' + (res.error || '알 수 없는 오류'));
