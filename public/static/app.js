@@ -1244,19 +1244,12 @@ async function showAdminScreen() {
                 <div 
                   class="p-4 space-y-2 min-h-[100px] team-drop-zone" 
                   data-team-id="${teamId}"
-                  ondragover="handleDragOver(event)"
-                  ondrop="handleDrop(event)"
                 >
                   ${teamUsers.map(user => `
                     <div 
                       class="bg-gray-50 rounded-lg p-3 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none"
                       draggable="true"
                       data-user-phone="${user.phone}"
-                      ondragstart="handleDragStart(event)"
-                      ondragend="handleDragEnd(event)"
-                      ontouchstart="handleTouchStart(event)"
-                      ontouchmove="handleTouchMove(event)"
-                      ontouchend="handleTouchEnd(event)"
                     >
                       <div class="flex items-center space-x-3">
                         <div class="text-2xl">${user.avatar_emoji || '👤'}</div>
@@ -1284,6 +1277,9 @@ async function showAdminScreen() {
         </div>
       </div>
     `;
+
+    // Initialize Drag & Drop Listeners
+    attachDragListeners();
 
   } catch (e) {
     console.error(e);
@@ -1471,6 +1467,29 @@ window.handleDrop = handleDrop;
 window.handleTouchStart = handleTouchStart;
 window.handleTouchMove = handleTouchMove;
 window.handleTouchEnd = handleTouchEnd;
+
+// ⚡️ Attach Event Listeners Programmatically (Fix for Scope/Inline Issues)
+function attachDragListeners() {
+  console.log('Attaching Drag & Drop Listeners...');
+
+  // User Cards (Draggables)
+  document.querySelectorAll('.user-card').forEach(card => {
+    // Mouse Events
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+
+    // Touch Events
+    card.addEventListener('touchstart', handleTouchStart, { passive: false });
+    card.addEventListener('touchmove', handleTouchMove, { passive: false });
+    card.addEventListener('touchend', handleTouchEnd);
+  });
+
+  // Drop Zones
+  document.querySelectorAll('.team-drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', handleDragOver);
+    zone.addEventListener('drop', handleDrop);
+  });
+}
 
 // Init with Global Error Handling
 window.addEventListener('DOMContentLoaded', async () => {
