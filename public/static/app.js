@@ -1557,17 +1557,35 @@ function attachDragListeners() {
 
   // Drop Zones
   document.querySelectorAll('.team-drop-zone').forEach(zone => {
-    zone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('dragover', handleDragOver);
     zone.addEventListener('drop', handleDrop);
   });
 }
-
 
 // ============================================
 // 🎨 PROFILE SETTINGS (DIY Avatar)
 // ============================================
 
+function loadCropperLib() {
+  if (document.getElementById('cropper-css')) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.id = 'cropper-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
+    script.onload = resolve;
+    document.head.appendChild(script);
+  });
+}
+
 function showProfileSettings() {
+  loadCropperLib(); // Load lib in background if not present
+
   const app = document.getElementById('app');
 
   // Current values
@@ -1576,7 +1594,7 @@ function showProfileSettings() {
 
   app.innerHTML = `
     <div class="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center animate-in fade-in duration-200">
-      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
         
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-bold text-gray-800">프로필 설정</h2>
@@ -1609,7 +1627,9 @@ function showProfileSettings() {
 
         <!-- TAB CONTENT: PHOTO -->
         <div id="content-photo" class="hidden">
-           <div class="flex flex-col items-center justify-center py-4">
+           
+           <!-- 1. Preview Mode -->
+           <div id="photo-preview-mode" class="flex flex-col items-center justify-center py-4">
               <div class="relative w-32 h-32 mb-4">
                  <img id="preview-image" src="${currentUrl || 'https://via.placeholder.com/150?text=No+Image'}" 
                       class="w-full h-full rounded-full object-cover border-4 border-gray-100 shadow-inner bg-gray-50">
@@ -1622,7 +1642,7 @@ function showProfileSettings() {
               <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
               
               <p class="text-xs text-gray-400 mb-6 text-center">
-                이미지는 자동으로 압축되어 업로드됩니다.<br>(본인 얼굴이 잘 나온 사진을 써주세요!)
+                이미지는 크롭 후 자동으로 압축됩니다.<br>(본인 얼굴이 잘 나온 사진을 써주세요!)
               </p>
 
               <button id="upload-btn" onclick="uploadAvatarImage()" disabled
@@ -1630,6 +1650,22 @@ function showProfileSettings() {
                  사진으로 변경하기
               </button>
            </div>
+
+           <!-- 2. Crop Mode (Hidden) -->
+           <div id="photo-crop-mode" class="hidden flex flex-col items-center">
+              <div class="w-full h-64 bg-gray-900 rounded-xl overflow-hidden mb-4 relative">
+                  <img id="crop-target-image" class="max-w-full block">
+              </div>
+              <div class="flex space-x-3 w-full">
+                  <button onclick="cancelCrop()" class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold">
+                    취소
+                  </button>
+                  <button onclick="confirmCrop()" class="flex-1 py-3 rounded-xl bg-purple-600 text-white font-bold shadow-lg">
+                    이미지 자르기
+                  </button>
+              </div>
+           </div>
+
         </div>
 
       </div>
@@ -1657,59 +1693,75 @@ window.switchTab = function (tab) {
   }
 }
 
-// 🖼️ Image Compression Logic
+// 🖼️ Image Cropping & Compression
 let selectedFileBase64 = null;
+let cropperInstance = null;
 
-window.handleFileSelect = function (input) {
+window.handleFileSelect = async function (input) {
   if (input.files && input.files[0]) {
+    await loadCropperLib(); // Ensure lib is loaded
+
     const file = input.files[0];
     const reader = new FileReader();
 
     reader.onload = function (e) {
-      // 1. Show Preview
-      const img = new Image();
+      // Switch to Crop Mode
+      document.getElementById('photo-preview-mode').classList.add('hidden');
+      document.getElementById('photo-crop-mode').classList.remove('hidden');
+
+      const img = document.getElementById('crop-target-image');
       img.src = e.target.result;
 
-      img.onload = function () {
-        // 2. Compress Logic (Canvas)
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 300;
-        const MAX_HEIGHT = 300;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // 3. Get Compressed Base64
-        selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.7); // 70% Quality
-
-        // Update Preview
-        document.getElementById('preview-image').src = selectedFileBase64;
-
-        // Enable Button
-        const btn = document.getElementById('upload-btn');
-        btn.disabled = false;
-        btn.className = "w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all flex items-center justify-center";
-      }
+      // Init Cropper
+      if (cropperInstance) cropperInstance.destroy();
+      cropperInstance = new Cropper(img, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.8,
+        minContainerHeight: 250
+      });
     }
-
     reader.readAsDataURL(file);
   }
+}
+
+window.cancelCrop = function () {
+  document.getElementById('photo-crop-mode').classList.add('hidden');
+  document.getElementById('photo-preview-mode').classList.remove('hidden');
+  document.getElementById('file-input').value = ''; // Reset input
+  if (cropperInstance) {
+    cropperInstance.destroy();
+    cropperInstance = null;
+  }
+}
+
+window.confirmCrop = function () {
+  if (!cropperInstance) return;
+
+  // 1. Get Cropped Canvas
+  const canvas = cropperInstance.getCroppedCanvas({
+    width: 300,  // Output Resize Width
+    height: 300  // Output Resize Height
+  });
+
+  // 2. Convert to Base64 (Compressed)
+  selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+  // 3. Update Preview & UI
+  document.getElementById('preview-image').src = selectedFileBase64;
+  document.getElementById('photo-crop-mode').classList.add('hidden');
+  document.getElementById('photo-preview-mode').classList.remove('hidden');
+
+  // 4. Cleanup
+  cropperInstance.destroy();
+  cropperInstance = null;
+
+  // Enable Upload
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = false;
+  btn.className = "w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all flex items-center justify-center";
+  btn.innerText = "사진으로 변경하기";
 }
 
 window.uploadAvatarImage = async function () {
@@ -1765,7 +1817,7 @@ window.handleAvatarSave = async function (type, value) {
 }
 
 // ⚡️ Expose global function
-window.showProfileSettings = showProfileSettings;
+window.showProfileSettings = showProfileSettings; // Make sure it's exposed
 
 
 // Init with Global Error Handling
