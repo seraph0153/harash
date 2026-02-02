@@ -1311,6 +1311,12 @@ function handleDragStart(e) {
   if (!target) return;
 
   console.log('Drag Start:', target.dataset.userPhone);
+
+  // 🚫 Prevent text selection interference
+  if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
+
   draggedUserPhone = target.dataset.userPhone;
   target.style.opacity = '0.4';
 

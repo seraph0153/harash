@@ -1,1 +1,31 @@
-h1 { font-family: Arial, Helvetica, sans-serif; }
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang&family=Gowun+Dodum&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@300;400;700&display=swap');
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-serif {
+    font-family: 'Noto Serif KR', serif;
+}
+
+.font-gowun-batang {
+    font-family: 'Gowun Batang', serif;
+}
+
+.font-gowun-dodum {
+    font-family: 'Gowun Dodum', sans-serif;
+}
+
+/* 🖱️ Drag & Drop UX Improvements */
+.user-card {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    -webkit-user-drag: element; /* Safari */
+}
+
+.user-card:active {
+    cursor: grabbing;
+}
