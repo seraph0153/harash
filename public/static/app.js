@@ -399,6 +399,13 @@ async function showMapScreen(pushHistory = true) {
       t.avg_days = t.users.length ? totalDays / t.users.length : 0;
     });
 
+    // 🔒 TEAM ISOLATION LOGIC
+    // Admins/Pastors see ALL teams. Members see ONLY their team.
+    let visibleTeams = teams;
+    if (!['admin', 'senior_pastor', 'associate_pastor'].includes(currentUser.role)) {
+      visibleTeams = teams.filter(t => String(t.id) === String(currentUser.team_id));
+    }
+
     app.innerHTML = `
         <div class="min-h-screen bg-gray-50">
             <div class="bg-white sticky top-0 z-50 shadow-sm p-4 flex justify-between items-center">
@@ -432,7 +439,7 @@ async function showMapScreen(pushHistory = true) {
             
             <div class="max-w-full mx-auto pb-20 overflow-x-auto scrollbar-hide">
             <div class="flex px-4 space-x-4 w-fit mx-auto justify-center pb-4">
-            ${teams.map(t => `
+            ${visibleTeams.map(t => `
                 <div class="bg-white rounded-xl shadow-sm p-4 w-[340px] flex-none border border-gray-100 flex flex-col">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-gray-800 text-lg">${t.name}</h3>
@@ -1158,7 +1165,10 @@ async function showCommunityComments(dayNumber) {
     `;
 
   try {
-    const res = await apiRequest('getComments', { day: dayNumber });
+    const res = await apiRequest('getComments', {
+      day: dayNumber,
+      requester_phone: currentUser.phone
+    });
     const comments = res.data || res; // handle loose response
 
     const listEl = document.getElementById('comments-list');
