@@ -1384,7 +1384,7 @@ async function handleDrop(e) {
       teamId: newTeamId
     });
 
-    if (res.status === 'success') {
+    if (res.status === 'success' || res.success) {
       console.log('Server Sync Success');
       // No need to refresh entire screen, already moved
     } else {
