@@ -1359,6 +1359,12 @@ async function handleDrop(e) {
   draggedUserPhone = null;
 }
 
+// ⚡️ Expose Drag Handlers to Window (Fix for Scope Issue)
+window.handleDragStart = handleDragStart;
+window.handleDragEnd = handleDragEnd;
+window.handleDragOver = handleDragOver;
+window.handleDrop = handleDrop;
+
 // Init with Global Error Handling
 window.addEventListener('DOMContentLoaded', async () => {
   try {
