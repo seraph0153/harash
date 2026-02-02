@@ -1307,9 +1307,12 @@ async function showAdminScreen() {
 let draggedUserPhone = null;
 
 function handleDragStart(e) {
-  console.log('Drag Start:', e.target.dataset.userPhone);
-  draggedUserPhone = e.target.dataset.userPhone;
-  e.target.style.opacity = '0.4';
+  const target = e.target.closest('.user-card');
+  if (!target) return;
+
+  console.log('Drag Start:', target.dataset.userPhone);
+  draggedUserPhone = target.dataset.userPhone;
+  target.style.opacity = '0.4';
 
   // ⚡️ Required for Firefox and some browsers to initiate drag
   e.dataTransfer.effectAllowed = 'move';
