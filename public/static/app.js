@@ -1539,8 +1539,215 @@ function attachDragListeners() {
   });
 }
 
+
+// ============================================
+// 🎨 PROFILE SETTINGS (DIY Avatar)
+// ============================================
+
+function showProfileSettings() {
+  const app = document.getElementById('app');
+
+  // Current values
+  const currentEmoji = currentUser.avatar_emoji || '😊';
+  const currentUrl = currentUser.avatar_url || '';
+
+  app.innerHTML = `
+    <div class="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center animate-in fade-in duration-200">
+      <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold text-gray-800">프로필 설정</h2>
+          <button onclick="showMapScreen()" class="p-2 text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <!-- TABS -->
+        <div class="flex space-x-2 mb-6 bg-gray-100 p-1 rounded-xl">
+          <button onclick="switchTab('emoji')" id="tab-emoji" class="flex-1 py-2 rounded-lg text-sm font-bold bg-white text-purple-700 shadow-sm transition-all">
+            이모티콘
+          </button>
+          <button onclick="switchTab('photo')" id="tab-photo" class="flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all">
+            사진 올리기
+          </button>
+        </div>
+
+        <!-- TAB CONTENT: EMOJI -->
+        <div id="content-emoji" class="block">
+          <div class="grid grid-cols-5 gap-4 mb-6 max-h-60 overflow-y-auto p-2">
+            ${AVATAR_EMOJIS.map(emoji => `
+              <button onclick="handleAvatarSave('emoji', '${emoji}')" 
+                class="aspect-square text-3xl flex items-center justify-center rounded-xl border-2 ${currentEmoji === emoji ? 'border-purple-500 bg-purple-50' : 'border-transparent hover:bg-gray-50'} transition-all">
+                ${emoji}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- TAB CONTENT: PHOTO -->
+        <div id="content-photo" class="hidden">
+           <div class="flex flex-col items-center justify-center py-4">
+              <div class="relative w-32 h-32 mb-4">
+                 <img id="preview-image" src="${currentUrl || 'https://via.placeholder.com/150?text=No+Image'}" 
+                      class="w-full h-full rounded-full object-cover border-4 border-gray-100 shadow-inner bg-gray-50">
+                 <button onclick="document.getElementById('file-input').click()" 
+                         class="absolute bottom-0 right-0 bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-700">
+                    <i class="fas fa-camera text-xs"></i>
+                 </button>
+              </div>
+              
+              <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
+              
+              <p class="text-xs text-gray-400 mb-6 text-center">
+                이미지는 자동으로 압축되어 업로드됩니다.<br>(본인 얼굴이 잘 나온 사진을 써주세요!)
+              </p>
+
+              <button id="upload-btn" onclick="uploadAvatarImage()" disabled
+                class="w-full bg-gray-300 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center">
+                 사진으로 변경하기
+              </button>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+// Tab Switcher
+window.switchTab = function (tab) {
+  const emojiTab = document.getElementById('tab-emoji');
+  const photoTab = document.getElementById('tab-photo');
+  const emojiContent = document.getElementById('content-emoji');
+  const photoContent = document.getElementById('content-photo');
+
+  if (tab === 'emoji') {
+    emojiTab.className = "flex-1 py-2 rounded-lg text-sm font-bold bg-white text-purple-700 shadow-sm transition-all";
+    photoTab.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all";
+    emojiContent.classList.remove('hidden');
+    photoContent.classList.add('hidden');
+  } else {
+    emojiTab.className = "flex-1 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-gray-700 transition-all";
+    photoTab.className = "flex-1 py-2 rounded-lg text-sm font-bold bg-white text-purple-700 shadow-sm transition-all";
+    emojiContent.classList.add('hidden');
+    photoContent.classList.remove('hidden');
+  }
+}
+
+// 🖼️ Image Compression Logic
+let selectedFileBase64 = null;
+
+window.handleFileSelect = function (input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      // 1. Show Preview
+      const img = new Image();
+      img.src = e.target.result;
+
+      img.onload = function () {
+        // 2. Compress Logic (Canvas)
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 300;
+        const MAX_HEIGHT = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // 3. Get Compressed Base64
+        selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.7); // 70% Quality
+
+        // Update Preview
+        document.getElementById('preview-image').src = selectedFileBase64;
+
+        // Enable Button
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = false;
+        btn.className = "w-full bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all flex items-center justify-center";
+      }
+    }
+
+    reader.readAsDataURL(file);
+  }
+}
+
+window.uploadAvatarImage = async function () {
+  if (!selectedFileBase64) return;
+
+  const btn = document.getElementById('upload-btn');
+  const originalText = btn.innerText;
+  btn.innerText = "업로드 중... (잠시만요)";
+  btn.disabled = true;
+  btn.classList.add("opacity-50", "cursor-not-allowed");
+
+  try {
+    const res = await apiRequest('updateAvatarImage', {
+      phone: currentUser.phone,
+      imageBase64: selectedFileBase64
+    });
+
+    if (res.success || res.url) {
+      currentUser.avatar_url = res.url;
+      currentUser.avatar_emoji = ''; // Clear emoji if photo set
+      localStorage.setItem('harash_user', JSON.stringify(currentUser));
+      alert('프로필 사진이 변경되었습니다!');
+      showMapScreen();
+    } else {
+      throw new Error(res.error || 'Server returned failure');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('사진 업로드 실패: ' + e.message);
+    btn.innerText = originalText;
+    btn.disabled = false;
+    btn.classList.remove("opacity-50", "cursor-not-allowed");
+  }
+}
+
+window.handleAvatarSave = async function (type, value) {
+  if (type === 'emoji') {
+    try {
+      const res = await apiRequest('updateAvatar', {
+        phone: currentUser.phone,
+        avatar_emoji: value
+      });
+      if (res.success) {
+        currentUser.avatar_emoji = value;
+        currentUser.avatar_url = ''; // Clear photo if emoji set
+        localStorage.setItem('harash_user', JSON.stringify(currentUser));
+        showMapScreen();
+      }
+    } catch (e) {
+      alert('변경 실패: ' + e.message);
+    }
+  }
+}
+
+// ⚡️ Expose global function
+window.showProfileSettings = showProfileSettings;
+
+
 // Init with Global Error Handling
 window.addEventListener('DOMContentLoaded', async () => {
+
   try {
     console.log("App initializing...");
     await loadUser();
