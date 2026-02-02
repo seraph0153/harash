@@ -271,7 +271,7 @@ function showLoginScreen() {
 
 async function handleLogin(e) {
   e.preventDefault();
-  const phone = document.getElementById('phone').value;
+  const phone = document.getElementById('phone').value.replace(/-/g, '');
   const pin = document.getElementById('pin').value;
 
   if (!API_BASE_URL.includes("script.google.com")) {
@@ -295,6 +295,8 @@ async function handleLogin(e) {
     alert('로그인 실패: ' + (error.message || '서버 오류'));
   }
 }
+window.handleLogin = handleLogin;
+window.handleLogin = handleLogin;
 
 function showRegisterScreen() {
   const app = document.getElementById('app');
