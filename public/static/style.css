@@ -3,6 +3,8 @@
 body {
     font-family: 'Noto Sans KR', sans-serif;
     -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+    /* Prevent pull-to-refresh */
 }
 
 .font-serif {
@@ -21,9 +23,12 @@ body {
 .user-card {
     cursor: grab;
     user-select: none;
-    -webkit-user-select: none; /* Safari */
-    -ms-user-select: none; /* IE 10+ */
-    -webkit-user-drag: element; /* Safari */
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    /* IE 10+ */
+    -webkit-user-drag: element;
+    /* Safari */
 }
 
 .user-card:active {
