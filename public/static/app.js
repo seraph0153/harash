@@ -834,6 +834,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
   const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
+  const savedWeight = localStorage.getItem('harash_font_weight') || 'normal';
 
   const app = document.getElementById('app');
 
@@ -997,7 +998,22 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </div>
                                 <div class="flex items-center space-x-3">
                                     <i class="fas fa-align-justify text-gray-300 text-lg"></i>
+                                    <input type="range" id="line-height-slider-quick" min="1.2" max="2.5" step="0.1" 
+                                        class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                        value="${savedHeight}"
+                                        oninput="setReadingStyle('height', this.value)">
                                 </div>
+                            </div>
+
+                            <!-- 4. Bold Toggle (New) -->
+                            <div class="flex justify-between items-center mb-5">
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bold Text</label>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="font-weight-toggle-quick" class="sr-only peer" 
+                                        ${savedWeight === 'bold' ? 'checked' : ''}
+                                        onchange="setReadingStyle('weight', this.checked ? 'bold' : 'normal')">
+                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
                             </div>
 
                             <!-- 4. Data Refresh -->
@@ -1016,7 +1032,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
             <!-- Content -->
             <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen"> 
-                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-size: ${savedSize}px; line-height: ${savedHeight};">
+                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight};">
                     ${contentHTML}
                 </div>
                 
