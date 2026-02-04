@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed15)
-console.log("🚀 VERSION FIXED15 LOADED: Verse Text Color Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed16)
+console.log("🚀 VERSION FIXED16 LOADED: Default Text Contrast Improved");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -1181,7 +1181,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
           contentHTML += `
                         <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
                             <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 dark:text-gray-500 font-sans select-none font-bold">${v}</span>
-                            <span class="verse-text text-gray-800 dark:text-gray-200 transition-colors">${text}</span>
+                            <span class="verse-text text-gray-900 dark:text-gray-100 transition-colors">${text}</span>
                         </p>
                     `;
           verseCount++;
@@ -1341,7 +1341,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
             <!-- Content -->
             <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen overflow-y-auto"> 
-                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-family: ${savedFont}; font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight}; ${savedColor ? 'color: ' + savedColor + ';' : ''}">
+                <div id="bible-content-wrapper" class="p-1 text-gray-900 transition-all duration-300 relative" style="font-family: ${savedFont}; font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight}; ${savedColor ? 'color: ' + savedColor + ';' : ''}">
                     ${contentHTML}
                 </div>
                 
