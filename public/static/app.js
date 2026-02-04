@@ -997,10 +997,25 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   }
 
   localStorage.setItem('harash_last_reading_day', dayNumber);
-  const plan = biblePlan.find(d => Number(d.day_number) === Number(dayNumber));
+  let plan = biblePlan.find(d => Number(d.day_number) === Number(dayNumber));
 
+  // CRITICAL FIX: If plan not found, try fetching first before giving up
   if (!plan) {
-    alert("해당 일차의 데이터를 찾을 수 없습니다.");
+    console.log(`Plan for day ${dayNumber} not found. Fetching...`);
+    // Show loading indicator
+    const app = document.getElementById('app'); // Ensure app is defined here
+    app.innerHTML = '<div class="flex items-center justify-center min-h-screen"><div class="animate-spin text-4xl text-purple-600">⏳</div></div>';
+
+    fetchBiblePlan().then(() => {
+      plan = biblePlan.find(d => Number(d.day_number) === Number(dayNumber));
+      if (!plan) {
+        alert("해당 일차의 데이터를 찾을 수 없습니다. (서버 확인 필요)");
+        showMapScreen(false);
+      } else {
+        // Recursive call with force refresh
+        showReadingScreen(dayNumber, true);
+      }
+    });
     return;
   }
 
