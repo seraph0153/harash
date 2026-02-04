@@ -186,3 +186,14 @@ html.dark .icon-sun {
 }
 
 /* yellow-400 */
+
+/* 📖 Verse Text Visibility Fix */
+.verse-text {
+    color: #111827;
+    /* gray-900 (Deep Black) for Light Mode */
+}
+
+html.dark .verse-text {
+    color: #f3f4f6 !important;
+    /* gray-100 (Bright White) for Dark Mode */
+}

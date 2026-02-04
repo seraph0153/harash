@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed16)
-console.log("🚀 VERSION FIXED16 LOADED: Default Text Contrast Improved");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed17)
+console.log("🚀 VERSION FIXED17 LOADED: CSS File Enforcement");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
