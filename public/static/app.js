@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed17)
-console.log("🚀 VERSION FIXED17 LOADED: CSS File Enforcement");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed18)
+console.log("🚀 VERSION FIXED18 LOADED: FORCED VISIBILITY");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 

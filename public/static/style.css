@@ -188,12 +188,15 @@ html.dark .icon-sun {
 /* yellow-400 */
 
 /* 📖 Verse Text Visibility Fix */
-.verse-text {
-    color: #111827;
-    /* gray-900 (Deep Black) for Light Mode */
+/* 📖 Verse Text Visibility Fix - FORCED COLORS */
+.verse-text,
+#bible-content-wrapper {
+    color: #111827 !important;
+    /* gray-900 (Deep Black) for Light Mode - FORCED */
 }
 
-html.dark .verse-text {
+html.dark .verse-text,
+html.dark #bible-content-wrapper {
     color: #f3f4f6 !important;
-    /* gray-100 (Bright White) for Dark Mode */
+    /* gray-100 (Bright White) for Dark Mode - FORCED */
 }
