@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed6)
-console.log("🚀 VERSION FIXED6 LOADED: Native Scroll + Header Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed8)
+console.log("🚀 VERSION FIXED8 LOADED: Auto-Logout Disabled");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -233,7 +233,7 @@ async function loadUser() {
         })
         .catch(e => {
           console.warn("Background session check failed:", e);
-          if (e.message && e.message.includes('Session')) logout();
+          // if (e.message && e.message.includes('Session')) logout(); // Disabled for stability
         });
 
       // 2. 성경 플랜 최신화 (백그라운드)
