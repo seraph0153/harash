@@ -1,5 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed6)
+console.log("🚀 VERSION FIXED6 LOADED: Native Scroll + Header Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
