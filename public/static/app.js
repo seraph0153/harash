@@ -689,12 +689,42 @@ function renderHorizontalMap(todayDateStr) {
 
   const normalizedToday = normalizeDate(todayDateStr);
 
-  // Find index of today in the visible list to calculate 'distance'
-  // If today is not in list (shouldn't happen with current logic), default to middle
-  let focusIndex = visibleDays.findIndex(d => normalizeDate(d.date) === normalizedToday);
-  if (focusIndex === -1) focusIndex = Math.floor(visibleDays.length / 2);
+  // 오늘 날짜 인덱스 찾기
+  let todayIndex = biblePlan.findIndex(day => normalizeDate(day.date) === normalizedToday);
 
-  return visibleDays.map((day, index) => {
+  // Fallback if not found (e.g. weekend or date mismatch?), try similar logic or default to last visited
+  if (todayIndex === -1) {
+    if (currentUser && currentUser.total_days_read > 0) {
+      todayIndex = currentUser.total_days_read - 1; // 0-based
+    } else {
+      todayIndex = 0;
+    }
+  }
+
+  // Always generate 7 items centered on todayIndex
+  const items = [];
+  for (let i = -3; i <= 3; i++) {
+    const targetIdx = todayIndex + i;
+    if (targetIdx >= 0 && targetIdx < biblePlan.length) {
+      items.push(biblePlan[targetIdx]);
+    } else {
+      items.push(null); // Placeholder
+    }
+  }
+
+  // Focus is always the middle item (index 3)
+  const focusIndex = 3;
+
+  return items.map((day, index) => {
+    // 📏 Distance from focus (Today is always at index 3)
+    const dist = Math.abs(index - focusIndex);
+
+    // Placeholder Rendering
+    if (!day) {
+      // Render invisible spacer to maintain layout
+      return `<div class="min-w-[70px] flex-shrink-0"></div>`;
+    }
+
     let isPast = false;
     let isToday = false;
 
@@ -706,11 +736,7 @@ function renderHorizontalMap(todayDateStr) {
 
     const visualDone = isPast || (day.day_number <= currentUser.total_days_read);
 
-    // 📏 Distance from focus (Today)
-    const dist = Math.abs(index - focusIndex);
-
-    // Dynamic Sizing based on Distance (Fish-eye effect)
-    // Dist 0: w-16 (4rem), Dist 1: w-14, Dist 2: w-12, Dist 3+: w-10
+    // Dynamic Sizing based on Distance
     let sizeClass = '';
     let opacityClass = '';
     let fontSizeClass = '';
@@ -721,7 +747,7 @@ function renderHorizontalMap(todayDateStr) {
       fontSizeClass = 'text-xl';
     } else if (dist === 1) {
       sizeClass = 'w-14 h-14 scale-100 z-10 shadow-lg';
-      opacityClass = 'opacity-90'; // Slightly faded
+      opacityClass = 'opacity-90';
       fontSizeClass = 'text-lg';
     } else if (dist === 2) {
       sizeClass = 'w-12 h-12 scale-95 shadow-md';
@@ -729,7 +755,7 @@ function renderHorizontalMap(todayDateStr) {
       fontSizeClass = 'text-base';
     } else {
       sizeClass = 'w-10 h-10 scale-90 shadow-sm';
-      opacityClass = 'opacity-50 grayscale-[0.5]'; // Fade out distinctively
+      opacityClass = 'opacity-50 grayscale-[0.5]';
       fontSizeClass = 'text-sm';
     }
 
