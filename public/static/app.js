@@ -183,8 +183,15 @@ async function loadUser() {
       if (hash === '#admin' && ['admin', 'senior_pastor'].includes(currentUser.role)) {
         showAdminScreen();
       } else if (hash === '#reading') {
-        const lastDay = localStorage.getItem('harash_last_reading_day') || '1';
-        showReadingScreen(parseInt(lastDay), false);
+        const lastDay = localStorage.getItem('harash_last_reading_day');
+        // Only navigate to reading if we have the plan data
+        if (lastDay && biblePlan && biblePlan.length > 0) {
+          showReadingScreen(parseInt(lastDay), false);
+        } else {
+          // Fall back to map if data not ready
+          history.replaceState({ view: 'map' }, '', '#map');
+          showMapScreen(false);
+        }
       } else {
         // Default to Map Screen
         history.replaceState({ view: 'map' }, '', '#map');
