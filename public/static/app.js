@@ -1102,9 +1102,16 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                          <span class="font-bold text-sm text-gray-800 dark:text-gray-200 truncate max-w-[150px]">${plan.display_text}</span>
                     </div>
 
-                    <!-- Settings Button & Dropdown Container -->
-                    <div class="relative">
-                        <button onclick="toggleSettings()" id="settings-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-purple-600 hover:border-purple-200 transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:text-purple-400">
+                    <!-- Settings & Dark Mode -->
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-400 hover:text-purple-600 hover:border-purple-200 transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:text-purple-400">
+                            <i class="fas fa-moon icon-moon text-sm"></i>
+                            <i class="fas fa-sun icon-sun text-sm"></i>
+                        </button>
+
+                        <!-- Settings Button & Dropdown Container -->
+                        <div class="relative">
+                            <button onclick="toggleSettings()" id="settings-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-purple-600 hover:border-purple-200 transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:text-purple-400">
                             <i class="fas fa-font text-sm"></i>
                         </button>
 
