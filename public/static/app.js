@@ -15,6 +15,11 @@ let allUsers = [];
 let adminSettings = null;
 let bibleData = null;
 
+// 🌙 Dark Mode Init
+if (localStorage.getItem('harash_theme') === 'dark') {
+  document.documentElement.classList.add('dark');
+}
+
 // Axios 기본 설정 (GAS 통신용)
 // GAS는 POST 요청 시 리다이렉트를 하므로, fetch 대신 text/plain으로 보내는 방식을 선호합니다.
 // 하지만 편의상 Axios를 쓰되, CORS 에러를 피하기 위해 'Content-Type': 'text/plain'을 사용합니다.
@@ -358,6 +363,17 @@ function logout() {
   showLoginScreen();
 }
 
+function toggleTheme() {
+  const html = document.documentElement;
+  if (html.classList.contains('dark')) {
+    html.classList.remove('dark');
+    localStorage.setItem('harash_theme', 'light');
+  } else {
+    html.classList.add('dark');
+    localStorage.setItem('harash_theme', 'dark');
+  }
+}
+
 // -----------------------------------------------------------
 // VIEW CONTROLLERS
 // -----------------------------------------------------------
@@ -442,7 +458,11 @@ async function showMapScreen(pushHistory = true) {
                     <div class="text-xs text-gray-500">${getRoleKorean(currentUser.role)}</div>
                     </div>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex space-x-3 items-center">
+                    <button onclick="toggleTheme()" class="text-gray-400 hover:text-purple-600 transition-colors">
+                        <i class="fas fa-moon icon-moon"></i>
+                        <i class="fas fa-sun icon-sun"></i>
+                    </button>
                     ${['admin', 'senior_pastor', 'associate_pastor'].includes(currentUser.role) ?
         `<button onclick="showAdminScreen()" class="text-purple-600"><i class="fas fa-cog"></i></button>` : ''}
                     <div class="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-bold">🔥 ${currentUser.streak_count}</div>
