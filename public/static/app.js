@@ -924,6 +924,15 @@ function parseComplexBibleReference(text) {
   return ranges;
 }
 
+return ranges;
+}
+
+// Global Highlight Function
+window.toggleVerseHighlight = function (element) {
+  element.classList.toggle('bg-yellow-200');
+  // Custom highlight style can be added here
+};
+
 async function showReadingScreen(dayNumber, pushHistory = true) {
   if (pushHistory) {
     history.pushState({ view: 'reading', day: dayNumber }, '', '#reading');
@@ -1002,34 +1011,32 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                     <h3 class="text-xl font-semibold text-purple-700 mb-4 px-2 border-l-4 border-purple-200">${ch}장</h3>
                     <div class="space-y-2">`; // 개별 장 컨테이너 (폰트는 상위 wrapper에서 제어)
 
-        // Highlight Toggle Function
-        function toggleVerseHighlight(element) {
-          element.classList.toggle('bg-yellow-200');
-          element.classList.toggle('pl-6'); // Maintain padding
-          // Optional: Save to local storage? simpler for now just visual.
-        }
+        let verseCount = 0;
+        for (let v = 1; v <= 200; v++) {
+          const key = `${bookAbbr}${ch}:${v}`;
+          const text = bibleData[key];
+          if (!text) break;
 
-        // ... inside the loop
-        contentHTML += `
+          contentHTML += `
                         <p class="relative pl-6 hover:bg-gray-50 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
                             <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 font-sans select-none font-bold">${v}</span>
                             ${text}
                         </p>
                     `;
-        verseCount++;
-      }
+          verseCount++;
+        }
 
-      if (verseCount === 0) {
-        contentHTML += `<p class="italic text-gray-400">말씀을 불러올 수 없습니다. (${bookAbbr}${ch}장)</p>`;
-      }
+        if (verseCount === 0) {
+          contentHTML += `<p class="italic text-gray-400">말씀을 불러올 수 없습니다. (${bookAbbr}${ch}장)</p>`;
+        }
 
-      contentHTML += `</div></div>`;
+        contentHTML += `</div></div>`;
+      }
     }
-  }
-} else {
-  // Error Handling ...
-  const logs = window.bibleDebugLogs ? window.bibleDebugLogs.join('<br>') : 'No logs';
-  contentHTML = `
+  } else {
+    // Error Handling ...
+    const logs = window.bibleDebugLogs ? window.bibleDebugLogs.join('<br>') : 'No logs';
+    contentHTML = `
       <div class="text-center py-20 px-4">
         <div class="text-4xl mb-4">😢</div>
         <p class="text-gray-800 font-bold mb-2">성경 데이터 로드 실패</p>
@@ -1041,10 +1048,10 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
         </button>
       </div>
     `;
-}
+  }
 
-// Render Skeleton (Dropdown UI)
-app.innerHTML = `
+  // Render Skeleton (Dropdown UI)
+  app.innerHTML = `
         <div class="min-h-screen bg-gray-50 pb-safe">
             <!-- Header (Floating & Transparent) -->
             <div class="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300">
@@ -1174,10 +1181,10 @@ app.innerHTML = `
         </div>
     `;
 
-// Init Active Buttons
-setTimeout(() => {
-  initSettingsUI(savedSize, savedFont, savedHeight, savedWeight);
-}, 50);
+  // Init Active Buttons
+  setTimeout(() => {
+    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight);
+  }, 50);
 }
 async function completeReading(dayNumber) {
   try {
