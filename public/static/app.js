@@ -924,9 +924,6 @@ function parseComplexBibleReference(text) {
   return ranges;
 }
 
-return ranges;
-}
-
 // Global Highlight Function
 window.toggleVerseHighlight = function (element) {
   element.classList.toggle('bg-yellow-200');
