@@ -472,6 +472,48 @@ app.post('/api/user/:userId/avatar', async (c) => {
   return c.json({ success: true })
 })
 
+// 팀 생성 API
+app.post('/api/teams', async (c) => {
+  const { name } = await c.req.json()
+
+  if (!name) return c.json({ error: '팀 이름을 입력해주세요.' }, 400)
+
+  try {
+    const result = await c.env.DB.prepare(
+      'INSERT INTO teams (name, church_id) VALUES (?, 1) RETURNING id'
+    ).bind(name).first()
+
+    return c.json({ success: true, id: result?.id })
+  } catch (e) {
+    return c.json({ error: '팀 생성 실패' }, 500)
+  }
+})
+
+// 관리자용 사용자 추가 API
+app.post('/api/admin/users', async (c) => {
+  const { name, phone, team_id } = await c.req.json()
+
+  if (!name || !phone) return c.json({ error: '이름과 전화번호는 필수입니다.' }, 400)
+
+  // Default PIN: 1234
+  const pin = '1234'
+  const salt = crypto.randomUUID()
+  const pinHash = await hashPin(pin, salt)
+
+  try {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO users (name, phone, pin_hash, pin_salt, team_id, church_id, role, created_at, active)
+       VALUES (?, ?, ?, ?, ?, 1, 'member', CURRENT_TIMESTAMP, 1)
+       RETURNING *`
+    ).bind(name, phone, pinHash, salt, team_id || null).first()
+
+    return c.json({ success: true, user: result })
+  } catch (e) {
+    console.error(e)
+    return c.json({ error: '사용자 추가 실패 (중복 번호 확인)' }, 500)
+  }
+})
+
 // 풍선 댓글 추가
 app.post('/api/encouragement', async (c) => {
   const { from_user_id, to_user_id, reading_log_id, emoji, message } = await c.req.json()

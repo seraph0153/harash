@@ -1378,11 +1378,20 @@ async function showAdminScreen() {
       <div class="min-h-screen bg-gray-50 pb-20">
         <div class="sticky top-0 bg-white border-b border-gray-200 z-10">
           <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-            <button onclick="showMapScreen()" class="text-gray-600 hover:text-gray-800">
-              <i class="fas fa-arrow-left text-xl"></i>
-            </button>
-            <h1 class="text-xl font-bold text-gray-800">👥 팀 관리</h1>
-            <div class="w-8"></div>
+            <div class="flex items-center space-x-4">
+              <button onclick="showMapScreen()" class="text-gray-600 hover:text-gray-800">
+                <i class="fas fa-arrow-left text-xl"></i>
+              </button>
+              <h1 class="text-xl font-bold text-gray-800">👥 팀 관리</h1>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="adminAddUser()" class="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-100 hover:bg-purple-100 flex items-center">
+                <i class="fas fa-user-plus mr-1"></i> 교인 추가
+              </button>
+              <button onclick="createTeam()" class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 hover:bg-gray-200 flex items-center">
+                <i class="fas fa-folder-plus mr-1"></i> 팀 추가
+              </button>
+            </div>
           </div>
         </div>
         
@@ -1392,46 +1401,48 @@ async function showAdminScreen() {
       const teamName = teamId == 0 ? '미배정' : `팀 ${teamId}`;
 
       return `
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-100">
-                  <h2 class="font-bold text-gray-800 flex items-center">
-                    <span class="text-lg">📋</span>
-                    <span class="ml-2">${teamName}</span>
-                    <span class="ml-2 text-sm text-gray-500">(${teamUsers.length}명)</span>
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col max-h-[600px]">
+                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-100 flex-none">
+                  <h2 class="font-bold text-gray-800 flex items-center justify-between">
+                    <div class="flex items-center">
+                      <span class="text-lg">📋</span>
+                      <span class="ml-2">${teamName}</span>
+                    </div>
+                    <span class="text-xs bg-white/50 px-2 py-0.5 rounded-full text-gray-500 font-mono">${teamUsers.length}명</span>
                   </h2>
                 </div>
                 
                 <div 
-                  class="p-4 space-y-2 min-h-[100px] team-drop-zone" 
+                  class="p-3 team-drop-zone overflow-y-auto flex-1 custom-scrollbar grid grid-cols-1 sm:grid-cols-2 gap-2 content-start" 
                   data-team-id="${teamId}"
                 >
                   ${teamUsers.map(user => `
                     <div 
-                      class="bg-gray-50 rounded-lg p-3 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none"
+                      class="bg-gray-50 rounded-lg p-2 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none border border-gray-100 h-fit"
                       draggable="true"
                       data-user-phone="${user.phone}"
                     >
-                      <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-xl overflow-hidden border border-gray-100">
+                      <div class="flex items-center space-x-2 overflow-hidden">
+                        <div class="w-8 h-8 rounded-full bg-white flex-none flex items-center justify-center text-lg overflow-hidden border border-gray-200 shadow-sm">
                              ${user.avatar_url
           ? `<img src="${user.avatar_url}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerText='${user.avatar_emoji || '👤'}'">`
           : (user.avatar_emoji || '👤')}
                         </div>
-                        <div>
-                          <div class="font-semibold text-gray-800">${user.name}</div>
-                          <div class="text-xs text-gray-500">${getRoleKorean(user.role)}</div>
+                        <div class="min-w-0">
+                          <div class="font-bold text-gray-800 text-xs truncate">${user.name}</div>
+                          <div class="text-[10px] text-gray-500 truncate">${getRoleKorean(user.role)}</div>
                         </div>
                       </div>
-                      <div class="flex items-center space-x-2 text-sm text-gray-500">
-                        <span>🔥 ${user.streak_count || 0}</span>
-                        <span>📖 ${user.total_days_read || 0}</span>
+                      <div class="flex flex-col items-end space-y-0.5 text-[10px] text-gray-400 font-mono flex-none ml-1">
+                        <span>🔥${user.streak_count || 0}</span>
+                        <span>📖${user.total_days_read || 0}</span>
                       </div>
                     </div>
                   `).join('')}
                   
                   ${teamUsers.length === 0 ? `
-                    <div class="text-center py-8 text-gray-400 text-sm">
-                      팀원이 없습니다. 드래그해서 추가하세요.
+                    <div class="col-span-full text-center py-8 text-gray-400 text-xs">
+                      팀원이 없습니다.<br>드래그해서 추가하세요.
                     </div>
                   ` : ''}
                 </div>
@@ -1973,7 +1984,57 @@ window.handleAvatarSave = async function (type, value) {
 }
 
 // ⚡️ Expose global function
-window.showProfileSettings = showProfileSettings; // Make sure it's exposed
+window.showProfileSettings = showProfileSettings;
+
+// ============================================
+// 👥 Admin Actions: Create Team & Add User
+// ============================================
+
+window.createTeam = async function () {
+  const name = prompt('새로운 팀 이름을 입력하세요:');
+  if (!name) return;
+
+  try {
+    const res = await apiRequest('teams', { name }, 'POST');
+    if (res.success) {
+      alert('팀이 생성되었습니다.');
+      refreshData();
+    } else {
+      alert(res.error || '팀 생성 실패');
+    }
+  } catch (e) {
+    alert('오류 발생: ' + e.message);
+  }
+};
+
+window.adminAddUser = async function () {
+  const name = prompt('이름을 입력하세요:');
+  if (!name) return;
+
+  const phone = prompt('휴대폰 번호를 입력하세요 (숫자만):');
+  if (!phone) return;
+
+  const teamInput = prompt('배정할 팀 번호를 입력하세요 (0=미배정, 1, 2...):', '0');
+  if (teamInput === null) return;
+  const teamId = parseInt(teamInput);
+
+  try {
+    const res = await apiRequest('admin/users', {
+      name,
+      phone: phone.replace(/[^0-9]/g, ''),
+      team_id: isNaN(teamId) ? null : teamId
+    }, 'POST');
+
+    if (res.success) {
+      alert(`${name}님이 추가되었습니다.`);
+      refreshData();
+    } else {
+      alert(res.error || '사용자 추가 실패');
+    }
+  } catch (e) {
+    alert('오류 발생: ' + e.message);
+  }
+};
 
 
 // Init with Global Error Handling
