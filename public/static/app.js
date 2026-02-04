@@ -696,8 +696,9 @@ function renderHorizontalMap(todayDateStr) {
     // 📏 Distance from focus (Today is always at index 3)
     const dist = Math.abs(index - focusIndex);
 
-    // Placeholder Rendering
-    if (!day) {
+    // Placeholder Rendering or Invalid Data Protection
+    // 'day' must exist AND have a valid day_number to be rendered meaningfully
+    if (!day || !day.day_number) {
       // Render invisible spacer to maintain layout
       return `<div class="min-w-[70px] flex-shrink-0"></div>`;
     }
