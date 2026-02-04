@@ -368,12 +368,17 @@ async function showMapScreen(pushHistory = true) {
 
   let isRendered = false;
 
-  const offset = 1000 * 60 * 60 * 9;
-  const koreaNow = new Date((new Date()).getTime() + offset);
-  const koreaToday = koreaNow.toISOString().split('T')[0];
+  // ⚡️ KST (Korea Standard Time) 날짜 계산 (YYYY-MM-DD)
+  // 기존 수동 계산 대신 신뢰성 높은 toLocaleDateString 사용
+  const koreaToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
 
   // 내부 렌더링 함수
   const renderUI = (plan, users, me) => {
+    if (!currentUser) {
+      console.warn("RenderUI called without currentUser");
+      return;
+    }
+
     if (plan) biblePlan = plan;
     if (users) allUsers = users;
     if (me) {
@@ -461,7 +466,7 @@ async function showMapScreen(pushHistory = true) {
                                             ${u.role === 'team_leader' ? '<span class="ml-1 text-yellow-500 text-xs">👑</span>' : ''}
                                             ${u.id === currentUser.id ? '<span class="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">ME</span>' : ''}
                                         </div>
-                                        <div class="text-[10px] text-gray-500">${u.streak_count}일 연속 🔥</div>
+                                        <div class="text-sm text-gray-500">${u.streak_count}일 연속 🔥</div>
                                     </div>
                                 </div>
                                 <div class="text-sm font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">${u.total_days_read}일차</div>
@@ -497,6 +502,7 @@ async function showMapScreen(pushHistory = true) {
       const isValidCache = parsedPlan.every(p => p.day_number && !isNaN(p.day_number));
 
       if (isValidCache) {
+        // me argument might be missing on initial load, use currentUser
         renderUI(parsedPlan, parsedUsers, currentUser);
         // Set global variables from cache so we don't refetch unnecessarily
         if (!biblePlan || biblePlan.length === 0) biblePlan = parsedPlan;
@@ -586,18 +592,32 @@ async function showMapScreen(pushHistory = true) {
       allUsers = usersRes.data;
     }
 
-    renderUI(biblePlan, allUsers, currentUser);
+    // Safe Render: Ensure currentUser exists
+    if (currentUser) {
+      renderUI(biblePlan, allUsers, currentUser);
+    }
 
   } catch (e) {
     console.warn("데이터 백그라운드 갱신 실패:", e);
+    // Don't alert if we already rendered cache, less intrusive
     if (!isRendered) {
-      alert("데이터 로드 실패. 네트워크를 확인해주세요.");
+      // If fatal error and no cache, maybe then show alert or retry
+      app.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center p-4 text-center">
+            <div>
+                <div class="text-4xl mb-4">⚠️</div>
+                <p>일시적인 네트워크 오류입니다.</p>
+                <button onclick="location.reload()" class="mt-4 bg-gray-800 text-white px-4 py-2 rounded-lg">새로고침</button>
+            </div>
+        </div>
+      `;
     }
   }
 }
 
 function renderHorizontalMap(todayDateStr) {
-  if (!todayDateStr) todayDateStr = new Date().toISOString().split('T')[0];
+  // Safe Fallback
+  if (!todayDateStr) todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
 
   const formatSimpleDate = (dateStr) => {
     if (!dateStr) return '';
