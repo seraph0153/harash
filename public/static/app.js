@@ -631,30 +631,7 @@ function renderHorizontalMap(todayDateStr) {
     return text.replace(/장/g, '').trim();
   };
 
-  // 오늘 날짜 인덱스 찾기
-  let todayIndex = biblePlan.findIndex(day => day.date === todayDateStr);
 
-  // 오늘 날짜가 없으면 (주말 등), 가장 최근의 과거 날짜 찾기
-  if (todayIndex === -1) {
-    // 날짜순 정렬 가정 (biblePlan은 보통 정렬되어 있음)
-    // 뒤에서부터 탐색하여 오늘보다 이전인 첫 번째 날짜 찾기
-    for (let i = biblePlan.length - 1; i >= 0; i--) {
-      if (biblePlan[i].date < todayDateStr) {
-        todayIndex = i;
-        break;
-      }
-    }
-    // 그래도 없으면 (시작일 이전) -> 0
-    if (todayIndex === -1) todayIndex = 0;
-  }
-
-  // 앞뒤 3일 계산 (총 7일)
-  const start = Math.max(0, todayIndex - 3);
-  const end = Math.min(biblePlan.length, todayIndex + 4); // slice는 end 미포함이므로 +4
-  const visibleDays = biblePlan.slice(start, end);
-
-  // 빈 데이터 처리
-  if (visibleDays.length === 0) return '<div class="text-gray-400 text-sm">일정을 불러올 수 없습니다.</div>';
 
   // 날짜 정규화 함수 (YYYY-MM-DD)
   const normalizeDate = (dateInput) => {
