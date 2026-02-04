@@ -1698,7 +1698,7 @@ function attachDragListeners() {
 
   // Drop Zones
   document.querySelectorAll('.team-drop-zone').forEach(zone => {
-    dropZone.addEventListener('dragover', handleDragOver);
+    zone.addEventListener('dragover', handleDragOver);
     zone.addEventListener('drop', handleDrop);
   });
 }
