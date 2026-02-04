@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed9)
-console.log("🚀 VERSION FIXED9 LOADED: Fetch Normalization Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed10)
+console.log("🚀 VERSION FIXED10 LOADED: No Bounce UI + Fetch Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -1034,8 +1034,22 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
     fetchBiblePlan().then(() => {
       plan = biblePlan.find(d => Number(d.day_number) === Number(dayNumber));
       if (!plan) {
-        alert("해당 일차의 데이터를 찾을 수 없습니다. (서버 확인 필요)");
-        showMapScreen(false);
+        // ERROR UI instead of Redirect
+        app.innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+                <div class="text-4xl mb-4">⚠️</div>
+                <h2 class="text-xl font-bold mb-2">데이터 로딩 오류</h2>
+                <p class="text-gray-500 mb-6">${dayNumber}일차 데이터를 찾을 수 없습니다.</p>
+                <div class="space-y-3 w-full max-w-xs">
+                    <button onclick="location.reload()" class="w-full bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">
+                        🔄 다시 시도
+                    </button>
+                    <button onclick="showMapScreen()" class="w-full bg-gray-100 text-gray-600 px-6 py-3 rounded-xl font-bold">
+                        목록으로 가기
+                    </button>
+                </div>
+            </div>
+        `;
       } else {
         // Recursive call with force refresh
         showReadingScreen(dayNumber, true);
