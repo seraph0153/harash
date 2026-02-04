@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed12)
-console.log("🚀 VERSION FIXED12 LOADED: Chrome History Stack Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed13)
+console.log("🚀 VERSION FIXED13 LOADED: Race Condition Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -703,9 +703,13 @@ async function showMapScreen(pushHistory = true) {
       allUsers = usersRes.data;
     }
 
-    // Safe Render: Ensure currentUser exists
-    if (currentUser) {
+    // CRITICAL FIX: Only re-render if still on map screen!
+    // This prevents race condition where async callback overwrites reading screen
+    const currentHash = window.location.hash;
+    if (currentUser && (currentHash === '#map' || currentHash === '' || !currentHash)) {
       renderUI(biblePlan, allUsers, currentUser);
+    } else {
+      console.log("Skipping renderUI: User navigated away from map. Hash:", currentHash);
     }
 
   } catch (e) {
