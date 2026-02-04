@@ -184,13 +184,22 @@ async function loadUser() {
         showAdminScreen();
       } else if (hash === '#reading') {
         const lastDay = localStorage.getItem('harash_last_reading_day');
-        // Only navigate to reading if we have the plan data
-        if (lastDay && biblePlan && biblePlan.length > 0) {
-          showReadingScreen(parseInt(lastDay), false);
+
+        // Strategy: If plan loaded, show it. If not, FETCH it then show it.
+        if (biblePlan && biblePlan.length > 0) {
+          showReadingScreen(parseInt(lastDay || '1'), false);
         } else {
-          // Fall back to map if data not ready
-          history.replaceState({ view: 'map' }, '', '#map');
-          showMapScreen(false);
+          console.log("Plan empty on route check, fetching...");
+          // Show temp loading?
+          app.innerHTML = '<div class="flex items-center justify-center min-h-screen"><div class="animate-spin text-4xl text-purple-600">⏳</div></div>';
+
+          fetchBiblePlan().then(() => {
+            if (biblePlan && biblePlan.length > 0) {
+              showReadingScreen(parseInt(lastDay || '1'), false);
+            } else {
+              showMapScreen(false);
+            }
+          });
         }
       } else {
         // Default to Map Screen
