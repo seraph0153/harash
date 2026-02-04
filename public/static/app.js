@@ -650,20 +650,16 @@ function renderHorizontalMap(todayDateStr) {
   // 날짜 정규화 함수 (YYYY-MM-DD)
   const normalizeDate = (dateInput) => {
     if (!dateInput) return '';
-    // If it's already YYYY-MM-DD
-    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) return dateInput;
 
-    // ISO String or other formats
+    // 1. Try to parse as Date object first (handles ISO strings from GAS correctly by converting to KST)
     const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return String(dateInput).split('T')[0]; // Fallback
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    }
 
-    // KST Offset trick not needed if we just want strictly the date part of the string provided
-    // BUT, if input is "2026-02-04T00:00:00.000Z" (UTC), we might lose a day if we use getFullYear/etc in local time.
-    // However, Bible plans are usually just date strings.
-    // Let's assume standard YYYY-MM-DD string matching.
-
-    // Try simple string extraction if possible
+    // 2. Fallback for non-standard strings (e.g. 2026.2.4)
     let s = String(dateInput);
+
     if (s.includes('T')) s = s.split('T')[0];
     s = s.replace(/\./g, '-').replace(/\//g, '-').replace(/\s/g, '');
     // "2026.2.4" -> "2026-2-4" -> pad?
