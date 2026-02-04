@@ -243,7 +243,12 @@ async function fetchBiblePlan() {
 function showLoginScreen() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="min-h-screen gradient-bg flex items-center justify-center p-4">
+    <div class="min-h-screen gradient-bg flex items-center justify-center p-4 relative">
+      <button onclick="toggleTheme()" class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors z-50 p-2">
+         <i class="fas fa-moon icon-moon text-2xl"></i>
+         <i class="fas fa-sun icon-sun text-2xl"></i>
+      </button>
+
       <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
           <div class="text-6xl mb-4">📖</div>
@@ -320,7 +325,12 @@ window.handleLogin = handleLogin;
 function showRegisterScreen() {
   const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="min-h-screen gradient-bg flex items-center justify-center p-4">
+    <div class="min-h-screen gradient-bg flex items-center justify-center p-4 relative">
+      <button onclick="toggleTheme()" class="absolute top-6 right-6 text-white/80 hover:text-white transition-colors z-50 p-2">
+         <i class="fas fa-moon icon-moon text-2xl"></i>
+         <i class="fas fa-sun icon-sun text-2xl"></i>
+      </button>
+
       <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
         <h1 class="text-2xl font-bold text-center mb-6">회원가입</h1>
         <form id="registerForm" class="space-y-4">
@@ -1440,7 +1450,11 @@ async function showAdminScreen() {
               </button>
               <h1 class="text-xl font-bold text-gray-800">👥 팀 관리</h1>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex space-x-2 items-center">
+              <button onclick="toggleTheme()" class="text-gray-400 hover:text-purple-600 transition-colors mr-2">
+                <i class="fas fa-moon icon-moon"></i>
+                <i class="fas fa-sun icon-sun"></i>
+              </button>
               <button onclick="adminAddUser()" class="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-purple-100 hover:bg-purple-100 flex items-center">
                 <i class="fas fa-user-plus mr-1"></i> 교인 추가
               </button>
