@@ -197,7 +197,20 @@ async function loadUser() {
             if (biblePlan && biblePlan.length > 0) {
               showReadingScreen(parseInt(lastDay || '1'), false);
             } else {
-              showMapScreen(false);
+              // CRITICAL FIX: Do NOT redirect to map. Show Error/Retry.
+              app.innerHTML = `
+                  <div class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+                      <div class="text-4xl mb-4">⚠️</div>
+                      <h2 class="text-xl font-bold mb-2">데이터 로딩 실패</h2>
+                      <p class="text-gray-500 mb-6">성경 읽기표를 불러오지 못했습니다.</p>
+                      <button onclick="location.reload()" class="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">
+                          다시 시도
+                      </button>
+                      <button onclick="location.hash='#map'; location.reload();" class="mt-4 text-gray-400 text-sm underline">
+                          메인으로 이동
+                      </button>
+                  </div>
+              `;
             }
           });
         }

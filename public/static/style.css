@@ -4,9 +4,19 @@ html,
 body {
     font-family: 'Noto Sans KR', sans-serif;
     -webkit-font-smoothing: antialiased;
+    overflow: hidden !important;
+    /* Lock body */
+    height: 100% !important;
+    overscroll-behavior: none;
+}
+
+#app {
+    height: 100vh;
+    height: 100dvh;
+    /* Mobile Safari fix */
     overflow-y: auto !important;
-    /* Force scroll */
-    min-height: 100vh;
+    /* Scroll app container */
+    -webkit-overflow-scrolling: touch;
 }
 
 .font-serif {
