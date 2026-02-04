@@ -183,22 +183,12 @@ async function loadUser() {
       if (hash === '#admin' && ['admin', 'senior_pastor'].includes(currentUser.role)) {
         showAdminScreen();
       } else if (hash === '#reading') {
-        // Try to restore last reading day if specific day not available in hash logic (yet)
-        const lastDay = localStorage.getItem('harash_last_reading_day');
-        if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay))) {
-          showReadingScreen(parseInt(lastDay), false);
-        } else {
-          showMapScreen(false);
-        }
+        const lastDay = localStorage.getItem('harash_last_reading_day') || '1';
+        showReadingScreen(parseInt(lastDay), false);
       } else {
-        // Default to Map or Last Reading if specifically saved/intended
-        // But requested behavior is 'stay on page', so map is safiest default if no hash
-        if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay)) && !hash) {
-          showReadingScreen(parseInt(lastDay), false);
-        } else {
-          history.replaceState({ view: 'map' }, '', '#map');
-          showMapScreen(false);
-        }
+        // Default to Map Screen
+        history.replaceState({ view: 'map' }, '', '#map');
+        showMapScreen(false);
       }
 
       // ... (Rest of background sync logic remains same)
@@ -1194,7 +1184,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
             <div id="settings-overlay" class="hidden fixed inset-0 z-40 bg-transparent" onclick="toggleSettings()"></div>
 
             <!-- Content -->
-            <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen"> 
+            <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen overflow-y-auto"> 
                 <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-family: ${savedFont}; font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight};">
                     ${contentHTML}
                 </div>

@@ -3,8 +3,9 @@
 body {
     font-family: 'Noto Sans KR', sans-serif;
     -webkit-font-smoothing: antialiased;
-    overscroll-behavior-y: none;
-    /* Prevent pull-to-refresh */
+    overflow-y: auto;
+    /* Explicitly allow vertical scrolling */
+    min-height: 100vh;
 }
 
 .font-serif {
