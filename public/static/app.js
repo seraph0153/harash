@@ -450,7 +450,7 @@ async function showMapScreen(pushHistory = true) {
                         <h3 class="font-bold text-gray-800 text-lg">${t.name}</h3>
                         <span class="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded border border-gray-200">평균 ${Math.round(t.avg_days)}일</span>
                     </div>
-                    <div class="space-y-3 h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div class="space-y-3 h-auto max-h-[80vh] overflow-y-auto pr-1 custom-scrollbar">
                         ${t.users.map(u => `
                             <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
                                 <div class="flex items-center space-x-3">
