@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed8)
-console.log("🚀 VERSION FIXED8 LOADED: Auto-Logout Disabled");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed9)
+console.log("🚀 VERSION FIXED9 LOADED: Fetch Normalization Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -254,7 +254,32 @@ async function loadUser() {
 async function fetchBiblePlan() {
   try {
     const res = await apiRequest('getBiblePlan');
-    biblePlan = res.data;
+    if (res.status === 'success' || res.success) {
+      const rawData = res.data || [];
+      const normalized = rawData.map(item => {
+        const rawDay = item.DayNum || item.day_number;
+        // Skip invalid rows
+        if (!rawDay || rawDay === '읽기일차') return null;
+
+        const dayNum = parseInt(String(rawDay).replace(/[^0-9]/g, ''), 10);
+        if (!dayNum || isNaN(dayNum)) return null;
+
+        return {
+          ...item,
+          day_number: dayNum,
+          date: item.Date || item.date,
+          // FIX: Hard override for Day 20
+          display_text: (dayNum === 20) ? "에스더 8-10장, 욥기 1-3장" : (item.BookName || item.display_text),
+          book_name: item.BookName || item.book_name,
+          start_chapter: item.StartCh || item.start_chapter,
+          end_chapter: item.EndCh || item.end_chapter
+        };
+      }).filter(item => item !== null);
+
+      biblePlan = normalized;
+      localStorage.setItem('harash_cache_plan', JSON.stringify(biblePlan));
+      console.log("Bible Plan Fetched & Normalized:", biblePlan.length);
+    }
   } catch (e) {
     console.error("Bible plan fetch error", e);
   }
