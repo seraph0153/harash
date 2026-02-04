@@ -689,7 +689,12 @@ function renderHorizontalMap(todayDateStr) {
 
   const normalizedToday = normalizeDate(todayDateStr);
 
-  return visibleDays.map(day => {
+  // Find index of today in the visible list to calculate 'distance'
+  // If today is not in list (shouldn't happen with current logic), default to middle
+  let focusIndex = visibleDays.findIndex(d => normalizeDate(d.date) === normalizedToday);
+  if (focusIndex === -1) focusIndex = Math.floor(visibleDays.length / 2);
+
+  return visibleDays.map((day, index) => {
     let isPast = false;
     let isToday = false;
 
@@ -701,39 +706,58 @@ function renderHorizontalMap(todayDateStr) {
 
     const visualDone = isPast || (day.day_number <= currentUser.total_days_read);
 
-    let circleClass = '';
-    let containerClass = '';
-    let dateClass = '';
-    let rangeClass = '';
+    // 📏 Distance from focus (Today)
+    const dist = Math.abs(index - focusIndex);
+
+    // Dynamic Sizing based on Distance (Fish-eye effect)
+    // Dist 0: w-16 (4rem), Dist 1: w-14, Dist 2: w-12, Dist 3+: w-10
+    let sizeClass = '';
+    let opacityClass = '';
+    let fontSizeClass = '';
+
+    if (dist === 0) {
+      sizeClass = 'w-16 h-16 ring-4 ring-offset-2 scale-110 z-20 shadow-2xl';
+      opacityClass = 'opacity-100';
+      fontSizeClass = 'text-xl';
+    } else if (dist === 1) {
+      sizeClass = 'w-14 h-14 scale-100 z-10 shadow-lg';
+      opacityClass = 'opacity-90'; // Slightly faded
+      fontSizeClass = 'text-lg';
+    } else if (dist === 2) {
+      sizeClass = 'w-12 h-12 scale-95 shadow-md';
+      opacityClass = 'opacity-70';
+      fontSizeClass = 'text-base';
+    } else {
+      sizeClass = 'w-10 h-10 scale-90 shadow-sm';
+      opacityClass = 'opacity-50 grayscale-[0.5]'; // Fade out distinctively
+      fontSizeClass = 'text-sm';
+    }
+
+    let circleColor = '';
+    let dateColor = '';
 
     if (isToday) {
-      // 🎯 TODAY HIGHLIGHT: 더 확실한 강조 (크기 확대, 진한 색상)
-      // w-14 h-14 (vs w-12 h-12), 진한 그라데이션, 그림자 강화
-      circleClass = 'w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-800 text-white ring-4 ring-purple-300 ring-offset-2 shadow-2xl z-20 font-extrabold text-xl mb-1';
-      containerClass = 'scale-105 z-10 transform transition-transform duration-300';
-      dateClass = 'text-sm font-extrabold text-purple-800 mb-1';
-      rangeClass = 'text-xs font-bold text-purple-800 mt-1';
+      circleColor = 'bg-gradient-to-br from-purple-600 to-indigo-800 text-white ring-purple-300 font-extrabold';
+      dateColor = 'text-purple-800 font-extrabold';
     } else if (visualDone) {
-      circleClass = 'w-12 h-12 bg-purple-50 border-2 border-purple-200 text-purple-400 text-lg';
-      containerClass = 'opacity-80';
-      dateClass = 'text-xs font-semibold text-gray-400';
-      rangeClass = 'text-[10px] font-medium text-purple-600/70 mt-1';
+      circleColor = 'bg-purple-50 border-2 border-purple-200 text-purple-400 ring-transparent';
+      dateColor = 'text-gray-400 font-semibold';
     } else {
-      circleClass = 'w-12 h-12 bg-gray-50 border-2 border-gray-100 text-gray-300 text-lg';
-      containerClass = 'opacity-60';
-      dateClass = 'text-xs font-semibold text-gray-300';
-      rangeClass = 'text-[10px] font-medium text-gray-400 mt-1';
+      circleColor = 'bg-gray-50 border-2 border-gray-100 text-gray-300 ring-transparent';
+      dateColor = 'text-gray-300 font-medium';
     }
 
     const idAttr = isToday ? 'id="today-marker"' : '';
 
     return `
-            <div class="flex flex-col items-center justify-end cursor-pointer min-w-[70px] ${containerClass}" onclick="showReadingScreen(${day.day_number})">
-                <div class="${dateClass} tracking-tight">${formatSimpleDate(day.date)}</div>
-                <div ${idAttr} class="rounded-full flex items-center justify-center transition-all duration-300 ${circleClass}">
+            <div class="group flex flex-col items-center justify-end cursor-pointer min-w-[70px] transition-all duration-300 hover:-translate-y-2 hover:scale-105 ${opacityClass}" onclick="showReadingScreen(${day.day_number})">
+                <div class="text-xs mb-2 transition-colors ${dateColor}">${formatSimpleDate(day.date)}</div>
+                
+                <div ${idAttr} class="rounded-full flex items-center justify-center transition-all duration-500 ease-out group-hover:shadow-[0_0_20px_rgba(147,51,234,0.4)] group-hover:scale-110 group-hover:ring-2 group-hover:ring-purple-200 group-hover:border-purple-300 ${sizeClass} ${circleColor} ${fontSizeClass}">
                     ${day.day_number}
                 </div>
-                <div class="${rangeClass} text-center px-1 whitespace-nowrap overflow-hidden max-w-[90px] text-ellipsis">
+                
+                <div class="mt-2 text-[10px] text-center px-1 whitespace-nowrap overflow-hidden max-w-[80px] text-ellipsis transition-colors ${isToday ? 'text-purple-800 font-bold' : 'text-gray-400 group-hover:text-purple-500'}">
                     ${formatRangeText(day.display_text)}
                 </div>
             </div>
