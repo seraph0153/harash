@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed19)
-console.log("🚀 VERSION FIXED19 LOADED: Color Interaction Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed20)
+console.log("🚀 VERSION FIXED20 LOADED: Word Style Colors + Custom Picker");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -1309,25 +1309,31 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </label>
                             </div>
 
-                            <!-- 5. Text Color -->
+                            <!-- 5. Text Color (Word Style + Custom) -->
                             <div class="mb-5">
                                 <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Text Color</label>
-                                <div class="flex items-center space-x-2">
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <!-- Reset / Default -->
                                     <button onclick="setReadingStyle('color', '')" 
                                         class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-gradient-to-br from-gray-700 to-gray-900 transition-all hover:scale-110 ${!savedColor ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
                                         data-value="" title="기본 (검정)"></button>
-                                    <button onclick="setReadingStyle('color', '#4a5568')" 
-                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#4a5568' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
-                                        style="background-color: #4a5568;" data-value="#4a5568" title="진한 회색"></button>
-                                    <button onclick="setReadingStyle('color', '#2d3748')" 
-                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#2d3748' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
-                                        style="background-color: #2d3748;" data-value="#2d3748" title="어두운 회색"></button>
-                                    <button onclick="setReadingStyle('color', '#5a4a3f')" 
-                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#5a4a3f' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
-                                        style="background-color: #5a4a3f;" data-value="#5a4a3f" title="세피아"></button>
-                                    <button onclick="setReadingStyle('color', '#1a365d')" 
-                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#1a365d' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
-                                        style="background-color: #1a365d;" data-value="#1a365d" title="네이비"></button>
+                                    
+                                    <!-- Word Style Palette -->
+                                    <button onclick="setReadingStyle('color', '#000000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#000000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #000000;" data-value="#000000" title="검정"></button>
+                                    <button onclick="setReadingStyle('color', '#2b579a')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#2b579a' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #2b579a;" data-value="#2b579a" title="진한 파랑"></button>
+                                    <button onclick="setReadingStyle('color', '#c00000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#c00000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #c00000;" data-value="#c00000" title="진한 빨강"></button>
+                                    <button onclick="setReadingStyle('color', '#385723')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#385723' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #385723;" data-value="#385723" title="진한 초록"></button>
+                                    <button onclick="setReadingStyle('color', '#7030a0')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#7030a0' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #7030a0;" data-value="#7030a0" title="보라"></button>
+
+                                    <!-- Custom Picker -->
+                                    <div class="relative group">
+                                        <label class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden ${savedColor && !['#000000', '#2b579a', '#c00000', '#385723', '#7030a0'].includes(savedColor) ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" title="사용자 지정 색상">
+                                            <span class="text-xs">🎨</span>
+                                            <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" 
+                                                value="${savedColor && savedColor.startsWith('#') ? savedColor : '#000000'}"
+                                                oninput="setReadingStyle('color', this.value)">
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
