@@ -966,8 +966,9 @@ function parseComplexBibleReference(text) {
 
 // Global Highlight Function
 window.toggleVerseHighlight = function (element) {
-  element.classList.toggle('bg-yellow-200');
-  // Custom highlight style can be added here
+  element.classList.toggle('bg-yellow-100');
+  element.classList.toggle('dark:bg-yellow-900');
+  element.classList.toggle('dark:text-yellow-100'); // Ensure text remains visible
 };
 
 async function showReadingScreen(dayNumber, pushHistory = true) {
@@ -1055,9 +1056,9 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
           if (!text) break;
 
           contentHTML += `
-                        <p class="relative pl-6 hover:bg-gray-50 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
-                            <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 font-sans select-none font-bold">${v}</span>
-                            ${text}
+                        <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
+                            <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 dark:text-gray-500 font-sans select-none font-bold">${v}</span>
+                            <span class="dark:text-gray-200 transition-colors">${text}</span>
                         </p>
                     `;
           verseCount++;
@@ -1091,19 +1092,19 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   app.innerHTML = `
         <div class="min-h-screen bg-gray-50 pb-safe">
             <!-- Header (Floating & Transparent) -->
-            <div class="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300">
+            <div class="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100/50 transition-all duration-300 dark:bg-gray-900/90 dark:border-gray-800/50">
                 <div class="flex justify-between items-center h-14 px-3 max-w-xl mx-auto relative">
-                    <button onclick="showMapScreen()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-800">
+                    <button onclick="showMapScreen()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-800 dark:text-gray-200">
                         <i class="fas fa-arrow-left text-lg"></i>
                     </button>
                     
                     <div class="flex items-center space-x-2">
-                         <span class="font-bold text-sm text-gray-800 truncate max-w-[150px]">${plan.display_text}</span>
+                         <span class="font-bold text-sm text-gray-800 dark:text-gray-200 truncate max-w-[150px]">${plan.display_text}</span>
                     </div>
 
                     <!-- Settings Button & Dropdown Container -->
                     <div class="relative">
-                        <button onclick="toggleSettings()" id="settings-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-purple-600 hover:border-purple-200 transition-all">
+                        <button onclick="toggleSettings()" id="settings-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-600 hover:text-purple-600 hover:border-purple-200 transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:text-purple-400">
                             <i class="fas fa-font text-sm"></i>
                         </button>
 
