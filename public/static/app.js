@@ -648,24 +648,38 @@ function renderHorizontalMap(todayDateStr) {
     const visualDone = isPast || (day.day_number <= currentUser.total_days_read);
 
     let circleClass = '';
+    let containerClass = '';
+    let dateClass = '';
+    let rangeClass = '';
+
     if (isToday) {
-      // 🎯 TODAY HIGHLIGHT: 더 눈에 띄게 (scale-125, shadow-xl)
-      circleClass = 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white ring-4 ring-purple-200 ring-offset-2 scale-125 shadow-xl z-20 font-extrabold';
+      // 🎯 TODAY HIGHLIGHT: 더 확실한 강조 (크기 확대, 진한 색상)
+      // w-14 h-14 (vs w-12 h-12), 진한 그라데이션, 그림자 강화
+      circleClass = 'w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-800 text-white ring-4 ring-purple-300 ring-offset-2 shadow-2xl z-20 font-extrabold text-xl mb-1';
+      containerClass = 'scale-105 z-10 transform transition-transform duration-300';
+      dateClass = 'text-sm font-extrabold text-purple-800 mb-1';
+      rangeClass = 'text-xs font-bold text-purple-800 mt-1';
     } else if (visualDone) {
-      circleClass = 'bg-purple-50 border-2 border-purple-200 text-purple-400';
+      circleClass = 'w-12 h-12 bg-purple-50 border-2 border-purple-200 text-purple-400 text-lg';
+      containerClass = 'opacity-80';
+      dateClass = 'text-xs font-semibold text-gray-400';
+      rangeClass = 'text-[10px] font-medium text-purple-600/70 mt-1';
     } else {
-      circleClass = 'bg-gray-50 border-2 border-gray-100 text-gray-300';
+      circleClass = 'w-12 h-12 bg-gray-50 border-2 border-gray-100 text-gray-300 text-lg';
+      containerClass = 'opacity-60';
+      dateClass = 'text-xs font-semibold text-gray-300';
+      rangeClass = 'text-[10px] font-medium text-gray-400 mt-1';
     }
 
     const idAttr = isToday ? 'id="today-marker"' : '';
 
     return `
-            <div class="flex flex-col items-center space-y-3 cursor-pointer min-w-[70px] pt-2" onclick="showReadingScreen(${day.day_number})">
-                <div class="text-xs font-semibold ${isToday ? 'text-purple-600' : 'text-gray-400'} tracking-tight">${formatSimpleDate(day.date)}</div>
-                <div ${idAttr} class="w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${circleClass}">
+            <div class="flex flex-col items-center justify-end cursor-pointer min-w-[70px] ${containerClass}" onclick="showReadingScreen(${day.day_number})">
+                <div class="${dateClass} tracking-tight">${formatSimpleDate(day.date)}</div>
+                <div ${idAttr} class="rounded-full flex items-center justify-center transition-all duration-300 ${circleClass}">
                     ${day.day_number}
                 </div>
-                <div class="text-[11px] font-medium ${isToday ? 'text-purple-700 font-bold' : 'text-gray-500'} text-center px-1 whitespace-nowrap overflow-hidden max-w-[90px] text-ellipsis">
+                <div class="${rangeClass} text-center px-1 whitespace-nowrap overflow-hidden max-w-[90px] text-ellipsis">
                     ${formatRangeText(day.display_text)}
                 </div>
             </div>
@@ -707,7 +721,7 @@ function toggleSettings() {
   if (overlay) overlay.classList.toggle('hidden');
 }
 
-function setReadingStyle(type, value) {
+function setReadingStyle(type, value, animate = true) {
   const container = document.getElementById('bible-content-wrapper');
   if (!container) return;
 
@@ -727,16 +741,26 @@ function setReadingStyle(type, value) {
     if (display) display.textContent = value + 'px';
 
   } else if (type === 'font') {
-    // Add visual feedback animation
-    container.style.transition = 'font-family 0.3s ease, opacity 0.2s ease';
-    container.style.opacity = '0.7';
+    if (animate) {
+      // Add visual feedback animation
+      container.style.transition = 'font-family 0.3s ease, opacity 0.2s ease';
+      container.style.opacity = '0.7';
 
-    setTimeout(() => {
-      // Direct Style for Fonts
+      setTimeout(() => {
+        // Direct Style for Fonts
+        container.style.fontFamily = value;
+        container.style.opacity = '1';
+        localStorage.setItem('harash_font_family', value);
+      }, 100);
+    } else {
+      // Immediate apply for init
       container.style.fontFamily = value;
       container.style.opacity = '1';
-      localStorage.setItem('harash_font_family', value);
-    }, 100);
+      // No need to save to localStorage as it comes from there
+    }
+
+    // Always Save (ensure consistency)
+    localStorage.setItem('harash_font_family', value);
 
     // Update Buttons (Font - Dropdown Style)
     document.querySelectorAll('.setting-btn-font').forEach(btn => {
@@ -767,18 +791,21 @@ function setReadingStyle(type, value) {
     localStorage.setItem('harash_font_weight', value);
 
     // Sync Toggle UI
-    const toggle = document.getElementById('font-weight-toggle');
+    const toggle = document.getElementById('font-weight-toggle-quick');
     if (toggle) toggle.checked = (value === 'bold');
   }
 }
 
 function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight) {
-  // Apply all
-  setReadingStyle('size', currentSize);
-  setReadingStyle('font', currentFont);
-  setReadingStyle('height', currentHeight);
-  setReadingStyle('weight', currentWeight || 'normal');
+  // Apply all without animation
+  setReadingStyle('size', currentSize, false);
+  setReadingStyle('font', currentFont, false);
+  setReadingStyle('height', currentHeight, false);
+  // Ensure we pass 'bold' or 'normal' correctly
+  setReadingStyle('weight', currentWeight || 'normal', false);
 }
+
+// ... (Rest of format logic unchanged) ...
 
 // ============================================
 // 📖 BIBLE REFERENCE PARSER
@@ -1065,7 +1092,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Init Active Buttons
   setTimeout(() => {
-    initSettingsUI(savedSize, savedFont, savedHeight);
+    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight);
   }, 50);
 }
 async function completeReading(dayNumber) {
