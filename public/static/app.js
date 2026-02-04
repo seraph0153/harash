@@ -656,13 +656,47 @@ function renderHorizontalMap(todayDateStr) {
   // 빈 데이터 처리
   if (visibleDays.length === 0) return '<div class="text-gray-400 text-sm">일정을 불러올 수 없습니다.</div>';
 
+  // 날짜 정규화 함수 (YYYY-MM-DD)
+  const normalizeDate = (dateInput) => {
+    if (!dateInput) return '';
+    // If it's already YYYY-MM-DD
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) return dateInput;
+
+    // ISO String or other formats
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput).split('T')[0]; // Fallback
+
+    // KST Offset trick not needed if we just want strictly the date part of the string provided
+    // BUT, if input is "2026-02-04T00:00:00.000Z" (UTC), we might lose a day if we use getFullYear/etc in local time.
+    // However, Bible plans are usually just date strings.
+    // Let's assume standard YYYY-MM-DD string matching.
+
+    // Try simple string extraction if possible
+    let s = String(dateInput);
+    if (s.includes('T')) s = s.split('T')[0];
+    s = s.replace(/\./g, '-').replace(/\//g, '-').replace(/\s/g, '');
+    // "2026.2.4" -> "2026-2-4" -> pad?
+
+    const parts = s.split('-');
+    if (parts.length === 3) {
+      const y = parts[0];
+      const m = parts[1].padStart(2, '0');
+      const d = parts[2].padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return s;
+  };
+
+  const normalizedToday = normalizeDate(todayDateStr);
+
   return visibleDays.map(day => {
     let isPast = false;
     let isToday = false;
 
     if (day.date) {
-      isPast = day.date < todayDateStr;
-      isToday = day.date === todayDateStr;
+      const dayDate = normalizeDate(day.date);
+      isPast = dayDate < normalizedToday;
+      isToday = dayDate === normalizedToday;
     }
 
     const visualDone = isPast || (day.day_number <= currentUser.total_days_read);
