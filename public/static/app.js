@@ -1373,20 +1373,46 @@ async function showAdminScreen() {
   `;
 
   try {
-    const res = await apiRequest('getAllUsers');
-    if (res.status !== 'success') throw new Error(res.error);
+    // 🚀 Parallel Fetch: Users + Teams
+    const [userRes, teamRes] = await Promise.all([
+      apiRequest('getAllUsers'),
+      apiRequest('getAllTeams')
+    ]);
 
-    const users = res.data;
+    if (userRes.status !== 'success') throw new Error(userRes.error);
+    const users = userRes.data;
 
-    // Group users by team
+    // Build Team Map
     const teamMap = {};
+    const teamNames = {}; // id -> name mapping
+
+    // 1. Initialize with real teams (to show empty ones)
+    if (teamRes.success && teamRes.data) {
+      teamRes.data.forEach(t => {
+        const tid = String(t.id); // Normalize ID to string
+        teamMap[tid] = [];
+        teamNames[tid] = t.name;
+      });
+    }
+
+    // 2. Distribute Users
+    const unassignedKey = '0';
+    if (!teamMap[unassignedKey]) teamMap[unassignedKey] = []; // Ensure 'Unassigned' exists
+
     users.forEach(user => {
-      const teamId = user.team_id || 0;
-      if (!teamMap[teamId]) teamMap[teamId] = [];
-      teamMap[teamId].push(user);
+      const tid = String(user.team_id || 0);
+      if (!teamMap[tid]) {
+        teamMap[tid] = []; // Dynamically create if not in Teams DB (legacy)
+      }
+      teamMap[tid].push(user);
     });
 
-    const teamIds = Object.keys(teamMap).sort((a, b) => a - b);
+    // 3. Sort IDs (0 first, then numeric)
+    const teamIds = Object.keys(teamMap).sort((a, b) => {
+      if (a === '0') return -1;
+      if (b === '0') return 1;
+      return Number(a) - Number(b);
+    });
 
     app.innerHTML = `
       <div class="min-h-screen bg-gray-50 pb-20">
@@ -1409,28 +1435,32 @@ async function showAdminScreen() {
           </div>
         </div>
         
-        <div class="max-w-[95%] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          ${teamIds.map(teamId => {
-      const teamUsers = teamMap[teamId];
-      const teamName = teamId == 0 ? '미배정' : `팀 ${teamId}`;
+        <div class="max-w-4xl mx-auto px-4 py-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            
+            ${teamIds.map(teamId => {
+      const teamMembers = teamMap[teamId];
+      // Use fetched name or fallback
+      const teamName = teamNames[teamId]
+        ? teamNames[teamId]
+        : (teamId === '0' ? '미배정' : `팀 ${teamId}`);
 
       return `
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col max-h-[600px]">
-                <div class="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-100 flex-none">
-                  <h2 class="font-bold text-gray-800 flex items-center justify-between">
-                    <div class="flex items-center">
-                      <span class="text-lg">📋</span>
-                      <span class="ml-2">${teamName}</span>
-                    </div>
-                    <span class="text-xs bg-white/50 px-2 py-0.5 rounded-full text-gray-500 font-mono">${teamUsers.length}명</span>
-                  </h2>
-                </div>
-                
-                <div 
-                  class="p-3 team-drop-zone overflow-y-auto flex-1 custom-scrollbar grid grid-cols-1 sm:grid-cols-2 gap-2 content-start" 
-                  data-team-id="${teamId}"
-                >
-                  ${teamUsers.map(user => `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[600px]" 
+                     ondragover="handleDragOver(event)" 
+                     ondrop="handleDrop(event, ${teamId})">
+                  
+                  <div class="p-3 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700">
+                       <i class="fas fa-users text-gray-400 mr-1"></i> ${teamName}
+                    </h3>
+                    <span class="bg-white text-gray-500 text-xs px-2 py-1 rounded-full border border-gray-100 font-mono">
+                      ${teamMembers.length}명
+                    </span>
+                  </div>
+
+                  <div class="p-2 overflow-y-auto flex-1 team-drop-zone min-h-[100px] grid grid-cols-1 gap-2 content-start custom-scrollbar" data-team-id="${teamId}">
+                  ${teamMembers.map(user => `
                     <div 
                       class="bg-gray-50 rounded-lg p-2 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none border border-gray-100 h-fit"
                       draggable="true"
