@@ -1484,7 +1484,7 @@ async function showAdminScreen() {
                     </div>
                   `).join('')}
                   
-                  ${teamUsers.length === 0 ? `
+                  ${teamMembers.length === 0 ? `
                     <div class="col-span-full text-center py-8 text-gray-400 text-xs">
                       팀원이 없습니다.<br>드래그해서 추가하세요.
                     </div>
