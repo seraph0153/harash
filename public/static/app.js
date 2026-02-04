@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed10)
-console.log("🚀 VERSION FIXED10 LOADED: No Bounce UI + Fetch Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed11)
+console.log("🚀 VERSION FIXED11 LOADED: Popstate + Parse Error Safety");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -156,11 +156,21 @@ async function apiRequest(action, payload = {}) {
 
 // 🔙 Browser Back Button Handling (SPA Navigation)
 window.addEventListener('popstate', (event) => {
-  // If state is null or has view='map', go to map
-  if (!event.state || event.state.view === 'map') {
-    showMapScreen(false); // Make sure showMapScreen accepts a 'pushHistory' flag (default true)
-  } else if (event.state.view === 'reading') {
+  // CRITICAL FIX: Check hash FIRST, then event.state
+  const hash = window.location.hash;
+
+  if (hash === '#reading') {
+    const lastDay = localStorage.getItem('harash_last_reading_day');
+    showReadingScreen(parseInt(lastDay || '1'), false);
+  } else if (hash === '#admin') {
+    showAdminScreen();
+  } else if (hash === '#map' || hash === '' || !hash) {
+    showMapScreen(false);
+  } else if (event.state && event.state.view === 'reading') {
     showReadingScreen(event.state.day, false);
+  } else {
+    // Fallback: stay where we are, don't redirect
+    console.log("popstate: Unknown state, staying put. Hash:", hash);
   }
 });
 
@@ -244,9 +254,21 @@ async function loadUser() {
 
     } catch (e) {
       console.error("Local user parse fail:", e);
-      logout();
+      // Don't logout! Show recovery UI instead.
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+          <div class="text-4xl mb-4">🔧</div>
+          <h2 class="text-xl font-bold mb-2">로그인 정보 오류</h2>
+          <p class="text-gray-500 mb-6">저장된 사용자 정보를 읽을 수 없습니다.</p>
+          <button onclick="localStorage.clear(); location.reload();" class="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">
+            처음부터 다시 시작
+          </button>
+        </div>
+      `;
     }
   } else {
+    // No stored user - show login screen (this is intentional)
     showLoginScreen();
   }
 }
