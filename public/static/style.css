@@ -189,14 +189,15 @@ html.dark .icon-sun {
 
 /* 📖 Verse Text Visibility Fix */
 /* 📖 Verse Text Visibility Fix - FORCED COLORS */
-.verse-text,
-#bible-content-wrapper {
+/* Only apply when custom color is NOT active */
+#bible-content-wrapper:not(.custom-color-active),
+#bible-content-wrapper:not(.custom-color-active) .verse-text {
     color: #111827 !important;
     /* gray-900 (Deep Black) for Light Mode - FORCED */
 }
 
-html.dark .verse-text,
-html.dark #bible-content-wrapper {
+html.dark #bible-content-wrapper:not(.custom-color-active),
+html.dark #bible-content-wrapper:not(.custom-color-active) .verse-text {
     color: #f3f4f6 !important;
     /* gray-100 (Bright White) for Dark Mode - FORCED */
 }

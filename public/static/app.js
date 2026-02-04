@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed18)
-console.log("🚀 VERSION FIXED18 LOADED: FORCED VISIBILITY");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed19)
+console.log("🚀 VERSION FIXED19 LOADED: Color Interaction Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -995,6 +995,13 @@ function setReadingStyle(type, value, animate = true) {
     // Also set on container as fallback
     container.style.color = value;
     localStorage.setItem('harash_font_color', value);
+
+    // Toggle custom class for CSS override
+    if (value) {
+      container.classList.add('custom-color-active');
+    } else {
+      container.classList.remove('custom-color-active');
+    }
 
     // Update color buttons
     document.querySelectorAll('.setting-btn-color').forEach(btn => {
