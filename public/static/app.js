@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed13)
-console.log("🚀 VERSION FIXED13 LOADED: Race Condition Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed14)
+console.log("🚀 VERSION FIXED14 LOADED: Light Mode Fix + Text Color Option");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -986,16 +986,38 @@ function setReadingStyle(type, value, animate = true) {
     // Sync Toggle UI
     const toggle = document.getElementById('font-weight-toggle-quick');
     if (toggle) toggle.checked = (value === 'bold');
+  } else if (type === 'color') {
+    // Text Color
+    // Apply color to all verse text spans
+    const spans = container.querySelectorAll('span.verse-text');
+    spans.forEach(span => { span.style.color = value; });
+
+    // Also set on container as fallback
+    container.style.color = value;
+    localStorage.setItem('harash_font_color', value);
+
+    // Update color buttons
+    document.querySelectorAll('.setting-btn-color').forEach(btn => {
+      if (btn.dataset.value === value) {
+        btn.classList.add('ring-2', 'ring-purple-500', 'ring-offset-2');
+      } else {
+        btn.classList.remove('ring-2', 'ring-purple-500', 'ring-offset-2');
+      }
+    });
   }
 }
 
-function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight) {
+function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight, currentColor) {
   // Apply all without animation
   setReadingStyle('size', currentSize, false);
   setReadingStyle('font', currentFont, false);
   setReadingStyle('height', currentHeight, false);
   // Ensure we pass 'bold' or 'normal' correctly
   setReadingStyle('weight', currentWeight || 'normal', false);
+  // Apply color if set
+  if (currentColor) {
+    setReadingStyle('color', currentColor, false);
+  }
 }
 
 // ... (Rest of format logic unchanged) ...
@@ -1091,6 +1113,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
   const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
   const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
   const savedWeight = localStorage.getItem('harash_font_weight') || 'normal';
+  const savedColor = localStorage.getItem('harash_font_color') || '';
 
   const app = document.getElementById('app');
 
@@ -1158,7 +1181,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
           contentHTML += `
                         <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
                             <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 dark:text-gray-500 font-sans select-none font-bold">${v}</span>
-                            <span class="dark:text-gray-200 transition-colors">${text}</span>
+                            <span class="text-gray-800 dark:text-gray-200 transition-colors">${text}</span>
                         </p>
                     `;
           verseCount++;
@@ -1279,7 +1302,29 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </label>
                             </div>
 
-                            <!-- 4. Data Refresh -->
+                            <!-- 5. Text Color -->
+                            <div class="mb-5">
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Text Color</label>
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="setReadingStyle('color', '')" 
+                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-gradient-to-br from-gray-700 to-gray-900 transition-all hover:scale-110 ${!savedColor ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        data-value="" title="기본 (검정)"></button>
+                                    <button onclick="setReadingStyle('color', '#4a5568')" 
+                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#4a5568' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        style="background-color: #4a5568;" data-value="#4a5568" title="진한 회색"></button>
+                                    <button onclick="setReadingStyle('color', '#2d3748')" 
+                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#2d3748' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        style="background-color: #2d3748;" data-value="#2d3748" title="어두운 회색"></button>
+                                    <button onclick="setReadingStyle('color', '#5a4a3f')" 
+                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#5a4a3f' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        style="background-color: #5a4a3f;" data-value="#5a4a3f" title="세피아"></button>
+                                    <button onclick="setReadingStyle('color', '#1a365d')" 
+                                        class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#1a365d' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        style="background-color: #1a365d;" data-value="#1a365d" title="네이비"></button>
+                                </div>
+                            </div>
+
+                            <!-- 6. Data Refresh -->
                             <div class="pt-4 border-t border-gray-100 mt-4">
                                 <button onclick="refreshData()" class="w-full py-2.5 rounded-xl bg-gray-50 text-gray-600 text-xs font-bold hover:bg-gray-100 hover:text-purple-600 transition-colors flex items-center justify-center">
                                     <i class="fas fa-sync-alt mr-2"></i> 데이터 새로고침 (업데이트 확인)
@@ -1296,7 +1341,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
             <!-- Content -->
             <div class="pt-16 px-5 pb-32 max-w-xl mx-auto min-h-screen overflow-y-auto"> 
-                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-family: ${savedFont}; font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight};">
+                <div id="bible-content-wrapper" class="p-1 text-gray-700 transition-all duration-300 relative" style="font-family: ${savedFont}; font-size: ${savedSize}px; line-height: ${savedHeight}; font-weight: ${savedWeight}; ${savedColor ? 'color: ' + savedColor + ';' : ''}">
                     ${contentHTML}
                 </div>
                 
