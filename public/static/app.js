@@ -172,14 +172,28 @@ async function loadUser() {
 
       const lastDay = localStorage.getItem('harash_last_reading_day');
 
-      // 화면 렌더링
-      if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay))) {
-        // Initial load replaces state instead of push
-        history.replaceState({ view: 'reading', day: parseInt(lastDay) }, '', '#reading');
-        showReadingScreen(parseInt(lastDay), false);
+      // 화면 렌더링 (Hash Routing Support)
+      const hash = window.location.hash;
+
+      if (hash === '#admin' && ['admin', 'senior_pastor'].includes(currentUser.role)) {
+        showAdminScreen();
+      } else if (hash === '#reading') {
+        // Try to restore last reading day if specific day not available in hash logic (yet)
+        const lastDay = localStorage.getItem('harash_last_reading_day');
+        if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay))) {
+          showReadingScreen(parseInt(lastDay), false);
+        } else {
+          showMapScreen(false);
+        }
       } else {
-        history.replaceState({ view: 'map' }, '', '#map');
-        showMapScreen(false);
+        // Default to Map or Last Reading if specifically saved/intended
+        // But requested behavior is 'stay on page', so map is safiest default if no hash
+        if (lastDay && biblePlan.some(d => d.day_number === parseInt(lastDay)) && !hash) {
+          showReadingScreen(parseInt(lastDay), false);
+        } else {
+          history.replaceState({ view: 'map' }, '', '#map');
+          showMapScreen(false);
+        }
       }
 
       // ... (Rest of background sync logic remains same)
@@ -1995,7 +2009,7 @@ window.createTeam = async function () {
   if (!name) return;
 
   try {
-    const res = await apiRequest('teams', { name }, 'POST');
+    const res = await apiRequest('createTeam', { name }, 'POST');
     if (res.success) {
       alert('팀이 생성되었습니다.');
       refreshData();
@@ -2019,7 +2033,8 @@ window.adminAddUser = async function () {
   const teamId = parseInt(teamInput);
 
   try {
-    const res = await apiRequest('admin/users', {
+    // Action renamed for GAS compatibility
+    const res = await apiRequest('adminCreateUser', {
       name,
       phone: phone.replace(/[^0-9]/g, ''),
       team_id: isNaN(teamId) ? null : teamId
