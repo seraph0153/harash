@@ -1450,9 +1450,14 @@ async function showAdminScreen() {
                      ondragover="handleDragOver(event)" 
                      ondrop="handleDrop(event, ${teamId})">
                   
-                  <div class="p-3 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
-                    <h3 class="font-bold text-gray-700">
-                       <i class="fas fa-users text-gray-400 mr-1"></i> ${teamName}
+                  <div class="p-3 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center group">
+                    <h3 class="font-bold text-gray-700 flex items-center">
+                       <i class="fas fa-users text-gray-400 mr-2"></i> ${teamName}
+                       ${teamId !== '0' ? `
+                         <button onclick="deleteTeamAction(${teamId})" class="ml-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                           <i class="fas fa-trash-alt text-xs"></i>
+                         </button>
+                       ` : ''}
                     </h3>
                     <span class="bg-white text-gray-500 text-xs px-2 py-1 rounded-full border border-gray-100 font-mono">
                       ${teamMembers.length}명
@@ -1462,10 +1467,15 @@ async function showAdminScreen() {
                   <div class="p-2 overflow-y-auto flex-1 team-drop-zone min-h-[100px] grid grid-cols-1 gap-2 content-start custom-scrollbar" data-team-id="${teamId}">
                   ${teamMembers.map(user => `
                     <div 
-                      class="bg-gray-50 rounded-lg p-2 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none border border-gray-100 h-fit"
+                      class="bg-gray-50 rounded-lg p-2 flex items-center justify-between cursor-move hover:bg-gray-100 transition-colors user-card select-none border border-gray-100 h-fit relative group"
                       draggable="true"
                       data-user-phone="${user.phone}"
                     >
+                      <button onclick="event.stopPropagation(); deleteUserAction('${user.phone}', '${user.name}')" 
+                              class="absolute top-1 right-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 z-10">
+                        <i class="fas fa-times-circle"></i>
+                      </button>
+
                       <div class="flex items-center space-x-2 overflow-hidden">
                         <div class="w-8 h-8 rounded-full bg-white flex-none flex items-center justify-center text-lg overflow-hidden border border-gray-200 shadow-sm">
                              ${user.avatar_url
@@ -1477,7 +1487,7 @@ async function showAdminScreen() {
                           <div class="text-[10px] text-gray-500 truncate">${getRoleKorean(user.role)}</div>
                         </div>
                       </div>
-                      <div class="flex flex-col items-end space-y-0.5 text-[10px] text-gray-400 font-mono flex-none ml-1">
+                      <div class="flex flex-col items-end space-y-0.5 text-[10px] text-gray-400 font-mono flex-none ml-1 mr-4">
                         <span>🔥${user.streak_count || 0}</span>
                         <span>📖${user.total_days_read || 0}</span>
                       </div>
@@ -2075,6 +2085,38 @@ window.adminAddUser = async function () {
       refreshData();
     } else {
       alert(res.error || '사용자 추가 실패');
+    }
+  } catch (e) {
+    alert('오류 발생: ' + e.message);
+  }
+};
+
+window.deleteTeamAction = async function (teamId) {
+  if (!confirm('정말 이 팀을 삭제하시겠습니까?\n(소속된 팀원들은 "미배정" 상태가 됩니다)')) return;
+
+  try {
+    const res = await apiRequest('deleteTeam', { teamId }, 'POST');
+    if (res.success) {
+      alert('팀이 삭제되었습니다.');
+      refreshData();
+    } else {
+      alert(res.error || '팀 삭제 실패');
+    }
+  } catch (e) {
+    alert('오류 발생: ' + e.message);
+  }
+};
+
+window.deleteUserAction = async function (phone, name) {
+  if (!confirm(`'${name}' 님을 삭제하시겠습니까?\n(이 작업은 되돌릴 수 없습니다!)`)) return;
+
+  try {
+    const res = await apiRequest('deleteUser', { phone }, 'POST');
+    if (res.success) {
+      alert('삭제되었습니다.');
+      refreshData();
+    } else {
+      alert(res.error || '삭제 실패');
     }
   } catch (e) {
     alert('오류 발생: ' + e.message);
