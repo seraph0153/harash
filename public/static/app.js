@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed11)
-console.log("🚀 VERSION FIXED11 LOADED: Popstate + Parse Error Safety");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed12)
+console.log("🚀 VERSION FIXED12 LOADED: Chrome History Stack Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -1073,8 +1073,8 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
             </div>
         `;
       } else {
-        // Recursive call with force refresh
-        showReadingScreen(dayNumber, true);
+        // Recursive call WITHOUT pushing history again (already pushed at the start)
+        showReadingScreen(dayNumber, false);
       }
     });
     return;
