@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed14)
-console.log("🚀 VERSION FIXED14 LOADED: Light Mode Fix + Text Color Option");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed15)
+console.log("🚀 VERSION FIXED15 LOADED: Verse Text Color Fix");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -1181,7 +1181,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
           contentHTML += `
                         <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
                             <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 dark:text-gray-500 font-sans select-none font-bold">${v}</span>
-                            <span class="text-gray-800 dark:text-gray-200 transition-colors">${text}</span>
+                            <span class="verse-text text-gray-800 dark:text-gray-200 transition-colors">${text}</span>
                         </p>
                     `;
           verseCount++;
