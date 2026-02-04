@@ -1208,6 +1208,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                     </div>
                 </div>
             </div>
+            </div> <!-- End of Fixed Header -->
             
             <!-- Click Overlay to Close Dropdown -->
             <div id="settings-overlay" class="hidden fixed inset-0 z-40 bg-transparent" onclick="toggleSettings()"></div>
