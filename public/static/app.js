@@ -1,14 +1,14 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed27)
-console.log("🚀 VERSION FIXED27 LOADED: Date Correction (+1 Day) Re-applied");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed28)
+console.log("🚀 VERSION FIXED28 LOADED: Server-side Date Control (Expecting JST)");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
   const lastCleared = localStorage.getItem('harash_date_fix_version');
-  if (lastCleared !== 'fixed27') {
-    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v27)...");
+  if (lastCleared !== 'fixed28') {
+    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v28)...");
     localStorage.removeItem('harash_cache_plan');
-    localStorage.setItem('harash_date_fix_version', 'fixed27');
+    localStorage.setItem('harash_date_fix_version', 'fixed28');
   }
 } catch (e) { console.error(e); }
 // ==========================================
@@ -299,22 +299,7 @@ async function fetchBiblePlan() {
         return {
           ...item,
           day_number: dayNum,
-          date: (() => {
-            const origin = item.Date || item.date;
-            if (!origin) return null;
-
-            // FIX: GAS Date Issue Correction (Add 1 Day for KST) (fixed27)
-            // Confirmed -1 day lag (Day 25 arriving as 2/5 instead of 2/6).
-            const d = new Date(origin);
-            d.setDate(d.getDate() + 1);
-            const corrected = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-
-            // DEBUG: Log Day 25
-            if (dayNum === 25) {
-              console.log(`[Day 25 Debug] Origin: ${origin} -> Corrected(+1): ${corrected}`);
-            }
-            return corrected;
-          })(),
+          date: item.Date || item.date, // Server(JST) now returns "YYYY-MM-DD", no fix needed.
           // FIX: Hard override for Day 20
           display_text: (dayNum === 20) ? "에스더 8-10장, 욥기 1-3장" : (item.BookName || item.display_text),
           book_name: item.BookName || item.book_name,
