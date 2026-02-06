@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed24)
-console.log("🚀 VERSION FIXED24 LOADED: Day 25 Debug + Date Fix Confirmed");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed25)
+console.log("🚀 VERSION FIXED25 LOADED: Auto UI Refresh on Data Sync");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
@@ -326,6 +326,14 @@ async function fetchBiblePlan() {
       biblePlan = normalized;
       localStorage.setItem('harash_cache_plan', JSON.stringify(biblePlan));
       console.log("Bible Plan Fetched & Normalized:", biblePlan.length);
+
+      // Update UI immediately with new data
+      const currentHash = window.location.hash;
+      if (currentHash === '#reading' || currentHash === '') {
+        // Re-render reading screen to show correct dates
+        console.log("🔄 Refreshing UI with new data...");
+        renderUI();
+      }
     }
   } catch (e) {
     console.error("Bible plan fetch error", e);
