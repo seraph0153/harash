@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed21)
-console.log("🚀 VERSION FIXED21 LOADED: Dark Mode Custom Color Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed22)
+console.log("🚀 VERSION FIXED22 LOADED: Date Correction (+1 Day for KST)");
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
@@ -289,7 +289,16 @@ async function fetchBiblePlan() {
         return {
           ...item,
           day_number: dayNum,
-          date: item.Date || item.date,
+          day_number: dayNum,
+          date: (() => {
+            const origin = item.Date || item.date;
+            if (!origin) return null;
+            // FIX: GAS Date Issue Correction (Add 1 Day for KST)
+            // Sheet: 2026-02-06 -> GAS: 2026-02-05 -> App: 2026-02-06 (Corrected)
+            const d = new Date(origin);
+            d.setDate(d.getDate() + 1);
+            return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+          })(),
           // FIX: Hard override for Day 20
           display_text: (dayNum === 20) ? "에스더 8-10장, 욥기 1-3장" : (item.BookName || item.display_text),
           book_name: item.BookName || item.book_name,
