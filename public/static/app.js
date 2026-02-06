@@ -1,14 +1,14 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed26)
-console.log("🚀 VERSION FIXED26 LOADED: Revert Date Correction (Original Data)");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed27)
+console.log("🚀 VERSION FIXED27 LOADED: Date Correction (+1 Day) Re-applied");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
   const lastCleared = localStorage.getItem('harash_date_fix_version');
-  if (lastCleared !== 'fixed26') {
-    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v26)...");
+  if (lastCleared !== 'fixed27') {
+    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v27)...");
     localStorage.removeItem('harash_cache_plan');
-    localStorage.setItem('harash_date_fix_version', 'fixed26');
+    localStorage.setItem('harash_date_fix_version', 'fixed27');
   }
 } catch (e) { console.error(e); }
 // ==========================================
@@ -299,17 +299,19 @@ async function fetchBiblePlan() {
         return {
           ...item,
           day_number: dayNum,
-          day_number: dayNum,
           date: (() => {
             const origin = item.Date || item.date;
             if (!origin) return null;
-            // FIX: Revert +1 day correction (fixed26). Use standard KST conversion.
+
+            // FIX: GAS Date Issue Correction (Add 1 Day for KST) (fixed27)
+            // Confirmed -1 day lag (Day 25 arriving as 2/5 instead of 2/6).
             const d = new Date(origin);
+            d.setDate(d.getDate() + 1);
             const corrected = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
 
-            // DEBUG: Log Day 25 specifically
+            // DEBUG: Log Day 25
             if (dayNum === 25) {
-              console.log(`[Day 25 Debug] Origin: ${origin} -> Converted(KST): ${corrected}`);
+              console.log(`[Day 25 Debug] Origin: ${origin} -> Corrected(+1): ${corrected}`);
             }
             return corrected;
           })(),
