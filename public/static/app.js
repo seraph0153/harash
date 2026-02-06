@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed28)
-console.log("🚀 VERSION FIXED28 LOADED: Server-side Date Control (Expecting JST)");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed29)
+console.log("🚀 VERSION FIXED29 LOADED: API URL Updated");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
