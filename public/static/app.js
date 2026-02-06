@@ -1,14 +1,14 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed29)
-console.log("🚀 VERSION FIXED29 LOADED: API URL Updated");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed30)
+console.log("🚀 VERSION FIXED30 LOADED: Sync Initial View to Today (Closest Match)");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
   const lastCleared = localStorage.getItem('harash_date_fix_version');
-  if (lastCleared !== 'fixed28') {
-    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v28)...");
+  if (lastCleared !== 'fixed30') {
+    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v30)...");
     localStorage.removeItem('harash_cache_plan');
-    localStorage.setItem('harash_date_fix_version', 'fixed28');
+    localStorage.setItem('harash_date_fix_version', 'fixed30');
   }
 } catch (e) { console.error(e); }
 // ==========================================
@@ -798,10 +798,36 @@ function renderHorizontalMap(todayDateStr) {
   // 오늘 날짜 인덱스 찾기
   let todayIndex = biblePlan.findIndex(day => normalizeDate(day.date) === normalizedToday);
 
-  // Fallback if not found (e.g. weekend or date mismatch?), try similar logic or default to last visited
+  // FIX: If exact match missing (e.g. Weekend), find CLOSEST date within 4 days
+  // This solves "Today is Sat 2/7, app shows 2/2" -> Should show 2/6 or 2/9
+  if (todayIndex === -1 && biblePlan.length > 0) {
+    const target = new Date(normalizedToday);
+    let minDiff = Infinity;
+    let closestIdx = -1;
+
+    biblePlan.forEach((day, idx) => {
+      if (!day.date) return;
+      const dStr = normalizeDate(day.date);
+      if (!dStr) return;
+
+      const d = new Date(dStr);
+      const diff = Math.abs(d - target);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIdx = idx;
+      }
+    });
+
+    // 4 days (approx 345,600,000 ms) tolerance to cover long weekends/holidays
+    if (closestIdx !== -1 && minDiff <= 350000000) {
+      todayIndex = closestIdx;
+    }
+  }
+
+  // Fallback if STILL not found: Use Progress
   if (todayIndex === -1) {
     if (currentUser && currentUser.total_days_read > 0) {
-      todayIndex = currentUser.total_days_read - 1; // 0-based
+      todayIndex = currentUser.total_days_read - 1;
     } else {
       todayIndex = 0;
     }
