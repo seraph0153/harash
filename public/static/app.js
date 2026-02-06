@@ -1,11 +1,11 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed30)
-console.log("🚀 VERSION FIXED30 LOADED: Sync Initial View to Today (Closest Match)");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed31)
+console.log("🚀 VERSION FIXED31 LOADED: User Preference Persistence Fixed");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
   const lastCleared = localStorage.getItem('harash_date_fix_version');
-  if (lastCleared !== 'fixed30') {
+  if (lastCleared !== 'fixed30') { // Keep v30 clear logic as it was recent
     console.log("🧹 Clearing Bible Plan Cache for Date Fix (v30)...");
     localStorage.removeItem('harash_cache_plan');
     localStorage.setItem('harash_date_fix_version', 'fixed30');
@@ -1065,10 +1065,8 @@ function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight, 
   setReadingStyle('height', currentHeight, false);
   // Ensure we pass 'bold' or 'normal' correctly
   setReadingStyle('weight', currentWeight || 'normal', false);
-  // Apply color if set
-  if (currentColor) {
-    setReadingStyle('color', currentColor, false);
-  }
+  // Apply color (pass empty string if null to reset/default)
+  setReadingStyle('color', currentColor || '', false);
 }
 
 // ... (Rest of format logic unchanged) ...
@@ -1431,7 +1429,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Init Active Buttons
   setTimeout(() => {
-    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight);
+    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight, savedColor);
   }, 50);
 }
 async function completeReading(dayNumber) {
