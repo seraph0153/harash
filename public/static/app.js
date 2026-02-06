@@ -1,6 +1,16 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed22)
-console.log("🚀 VERSION FIXED22 LOADED: Date Correction (+1 Day for KST)");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed23)
+console.log("🚀 VERSION FIXED23 LOADED: CACHE CLEARED for Date Fix");
+
+// 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
+try {
+  const lastCleared = localStorage.getItem('harash_date_fix_version');
+  if (lastCleared !== 'fixed23') {
+    console.log("🧹 Clearing Bible Plan Cache for Date Fix...");
+    localStorage.removeItem('harash_cache_plan');
+    localStorage.setItem('harash_date_fix_version', 'fixed23');
+  }
+} catch (e) { console.error(e); }
 // ==========================================
 // Google Apps Script(GAS)를 백엔드로 사용합니다.
 
