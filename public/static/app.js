@@ -1,14 +1,14 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed23)
-console.log("🚀 VERSION FIXED23 LOADED: CACHE CLEARED for Date Fix");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed24)
+console.log("🚀 VERSION FIXED24 LOADED: Day 25 Debug + Date Fix Confirmed");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
   const lastCleared = localStorage.getItem('harash_date_fix_version');
-  if (lastCleared !== 'fixed23') {
-    console.log("🧹 Clearing Bible Plan Cache for Date Fix...");
+  if (lastCleared !== 'fixed24') {
+    console.log("🧹 Clearing Bible Plan Cache for Date Fix (v24)...");
     localStorage.removeItem('harash_cache_plan');
-    localStorage.setItem('harash_date_fix_version', 'fixed23');
+    localStorage.setItem('harash_date_fix_version', 'fixed24');
   }
 } catch (e) { console.error(e); }
 // ==========================================
@@ -307,7 +307,13 @@ async function fetchBiblePlan() {
             // Sheet: 2026-02-06 -> GAS: 2026-02-05 -> App: 2026-02-06 (Corrected)
             const d = new Date(origin);
             d.setDate(d.getDate() + 1);
-            return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+            const corrected = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+
+            // DEBUG: Log Day 25 specifically
+            if (dayNum === 25) {
+              console.log(`[Day 25 Debug] Origin: ${origin} -> Corrected: ${corrected}`);
+            }
+            return corrected;
           })(),
           // FIX: Hard override for Day 20
           display_text: (dayNum === 20) ? "에스더 8-10장, 욥기 1-3장" : (item.BookName || item.display_text),
