@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed31)
-console.log("🚀 VERSION FIXED31 LOADED: User Preference Persistence Fixed");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed32)
+console.log("🚀 VERSION FIXED32 LOADED: Theme-Specific Settings & Custom Highlight");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
@@ -460,12 +460,27 @@ function logout() {
 
 function toggleTheme() {
   const html = document.documentElement;
+  let newTheme = 'light';
+
   if (html.classList.contains('dark')) {
     html.classList.remove('dark');
-    localStorage.setItem('harash_theme', 'light');
+    newTheme = 'light';
   } else {
     html.classList.add('dark');
-    localStorage.setItem('harash_theme', 'dark');
+    newTheme = 'dark';
+  }
+  localStorage.setItem('harash_theme', newTheme);
+
+  // Reload settings for NEW theme
+  if (typeof getStorageKey === 'function' && typeof initSettingsUI === 'function') {
+    const savedSize = localStorage.getItem(getStorageKey('harash_font_size_val'));
+    const savedFont = localStorage.getItem(getStorageKey('harash_font_family')) || "'Gowun Batang', serif";
+    const savedHeight = localStorage.getItem(getStorageKey('harash_line_height_val')) || '1.8';
+    const savedWeight = localStorage.getItem(getStorageKey('harash_font_weight')) || 'normal';
+    const savedColor = localStorage.getItem(getStorageKey('harash_font_color')) || '';
+    const savedHighlight = localStorage.getItem(getStorageKey('harash_highlight_color')) || '#fef08a';
+
+    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight, savedColor, savedHighlight);
   }
 }
 
@@ -958,6 +973,12 @@ function toggleSettings() {
   if (overlay) overlay.classList.toggle('hidden');
 }
 
+// Helper: Get storage key based on current theme
+function getStorageKey(baseKey) {
+  const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  return `${theme}_${baseKey}`;
+}
+
 function setReadingStyle(type, value, animate = true) {
   const container = document.getElementById('bible-content-wrapper');
   if (!container) return;
@@ -968,7 +989,7 @@ function setReadingStyle(type, value, animate = true) {
 
     // Set direct pixel style
     container.style.fontSize = value + 'px';
-    localStorage.setItem('harash_font_size_val', value);
+    localStorage.setItem(getStorageKey('harash_font_size_val'), value);
 
     // Update Slider UI
     const slider = document.getElementById('font-size-slider');
@@ -987,17 +1008,16 @@ function setReadingStyle(type, value, animate = true) {
         // Direct Style for Fonts
         container.style.fontFamily = value;
         container.style.opacity = '1';
-        localStorage.setItem('harash_font_family', value);
+        localStorage.setItem(getStorageKey('harash_font_family'), value);
       }, 100);
     } else {
       // Immediate apply for init
       container.style.fontFamily = value;
       container.style.opacity = '1';
-      // No need to save to localStorage as it comes from there
     }
 
     // Always Save (ensure consistency)
-    localStorage.setItem('harash_font_family', value);
+    localStorage.setItem(getStorageKey('harash_font_family'), value);
 
     // Update Buttons (Font - Dropdown Style)
     document.querySelectorAll('.setting-btn-font').forEach(btn => {
@@ -1013,7 +1033,7 @@ function setReadingStyle(type, value, animate = true) {
   } else if (type === 'height') {
     // Inline style for Line Height (Slider)
     container.style.lineHeight = value;
-    localStorage.setItem('harash_line_height_val', value);
+    localStorage.setItem(getStorageKey('harash_line_height_val'), value);
 
     // Sync Slider UI
     const slider = document.getElementById('line-height-slider');
@@ -1025,7 +1045,7 @@ function setReadingStyle(type, value, animate = true) {
   } else if (type === 'weight') {
     // Font Weight (Bold)
     container.style.fontWeight = value;
-    localStorage.setItem('harash_font_weight', value);
+    localStorage.setItem(getStorageKey('harash_font_weight'), value);
 
     // Sync Toggle UI
     const toggle = document.getElementById('font-weight-toggle-quick');
@@ -1038,7 +1058,7 @@ function setReadingStyle(type, value, animate = true) {
 
     // Also set on container as fallback
     container.style.color = value;
-    localStorage.setItem('harash_font_color', value);
+    localStorage.setItem(getStorageKey('harash_font_color'), value);
 
     // Toggle custom class for CSS override
     if (value) {
@@ -1055,10 +1075,23 @@ function setReadingStyle(type, value, animate = true) {
         btn.classList.remove('ring-2', 'ring-purple-500', 'ring-offset-2');
       }
     });
+  } else if (type === 'highlight') {
+    // Highlight Color Setting (New)
+    localStorage.setItem(getStorageKey('harash_highlight_color'), value);
+
+    // Update highlight color buttons
+    document.querySelectorAll('.setting-btn-highlight').forEach(btn => {
+      if (btn.dataset.value === value) {
+        btn.classList.add('ring-2', 'ring-purple-500', 'ring-offset-2');
+      } else {
+        btn.classList.remove('ring-2', 'ring-purple-500', 'ring-offset-2');
+      }
+    });
   }
 }
 
-function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight, currentColor) {
+
+function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight, currentColor, currentHighlight) {
   // Apply all without animation
   setReadingStyle('size', currentSize, false);
   setReadingStyle('font', currentFont, false);
@@ -1067,6 +1100,8 @@ function initSettingsUI(currentSize, currentFont, currentHeight, currentWeight, 
   setReadingStyle('weight', currentWeight || 'normal', false);
   // Apply color (pass empty string if null to reset/default)
   setReadingStyle('color', currentColor || '', false);
+  // Apply highlight
+  setReadingStyle('highlight', currentHighlight || '#fef08a', false); // Default yellow-200
 }
 
 // ... (Rest of format logic unchanged) ...
@@ -1107,10 +1142,19 @@ function parseComplexBibleReference(text) {
 }
 
 // Global Highlight Function
+// Global Highlight Function (Updated for Custom Color)
 window.toggleVerseHighlight = function (element) {
-  element.classList.toggle('bg-yellow-100');
-  element.classList.toggle('dark:bg-yellow-900');
-  element.classList.toggle('dark:text-yellow-100'); // Ensure text remains visible
+  // Remove legacy classes if any
+  element.classList.remove('bg-yellow-100', 'dark:bg-yellow-900', 'dark:text-yellow-100');
+
+  if (element.style.backgroundColor) {
+    // Toggle Off
+    element.style.backgroundColor = '';
+  } else {
+    // Toggle On: Get current theme's highlight color
+    const color = localStorage.getItem(getStorageKey('harash_highlight_color')) || '#fef08a'; // Default
+    element.style.backgroundColor = color;
+  }
 };
 
 async function showReadingScreen(dayNumber, pushHistory = true) {
@@ -1155,14 +1199,15 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
     return;
   }
 
-  // Load Preferences
-  let savedSize = localStorage.getItem('harash_font_size_val');
+  // Load Preferences (Theme-Aware)
+  let savedSize = localStorage.getItem(getStorageKey('harash_font_size_val'));
   if (!savedSize || isNaN(savedSize)) savedSize = '20'; // Default 20px
 
-  const savedFont = localStorage.getItem('harash_font_family') || "'Gowun Batang', serif";
-  const savedHeight = localStorage.getItem('harash_line_height_val') || '1.8';
-  const savedWeight = localStorage.getItem('harash_font_weight') || 'normal';
-  const savedColor = localStorage.getItem('harash_font_color') || '';
+  const savedFont = localStorage.getItem(getStorageKey('harash_font_family')) || "'Gowun Batang', serif";
+  const savedHeight = localStorage.getItem(getStorageKey('harash_line_height_val')) || '1.8';
+  const savedWeight = localStorage.getItem(getStorageKey('harash_font_weight')) || 'normal';
+  const savedColor = localStorage.getItem(getStorageKey('harash_font_color')) || '';
+  const savedHighlight = localStorage.getItem(getStorageKey('harash_highlight_color')) || '#fef08a';
 
   const app = document.getElementById('app');
 
@@ -1227,8 +1272,11 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
           const text = bibleData[key];
           if (!text) break;
 
+          // Double Tap (dblclick) for Highlight
           contentHTML += `
-                        <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" onclick="toggleVerseHighlight(this)">
+                        <p class="relative pl-6 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer rounded transition-colors duration-200 py-1" 
+                           ondblclick="toggleVerseHighlight(this)"
+                           style="touch-action: manipulation;">
                             <span class="absolute left-1 top-1.5 text-[0.6em] text-gray-400 dark:text-gray-500 font-sans select-none font-bold">${v}</span>
                             <span class="verse-text transition-colors">${text}</span>
                         </p>
@@ -1341,7 +1389,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                             </div>
 
                             <!-- 4. Bold Toggle (New) -->
-                            <div class="flex justify-between items-center mb-5">
+                            <div class="flex justify-between items-center mb-5 mt-4">
                                 <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bold Text</label>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="font-weight-toggle-quick" class="sr-only peer" 
@@ -1351,25 +1399,22 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </label>
                             </div>
 
-                            <!-- 5. Text Color (Word Style + Custom) -->
+                            <!-- 5. Text Color -->
                             <div class="mb-5">
                                 <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Text Color</label>
                                 <div class="flex items-center flex-wrap gap-2">
-                                    <!-- Reset / Default -->
+                                    <!-- Reset -->
                                     <button onclick="setReadingStyle('color', '')" 
                                         class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-gradient-to-br from-gray-700 to-gray-900 transition-all hover:scale-110 ${!savedColor ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
                                         data-value="" title="기본 (검정)"></button>
                                     
-                                    <!-- Word Style Palette -->
-                                    <button onclick="setReadingStyle('color', '#000000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#000000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #000000;" data-value="#000000" title="검정"></button>
-                                    <button onclick="setReadingStyle('color', '#2b579a')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#2b579a' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #2b579a;" data-value="#2b579a" title="진한 파랑"></button>
-                                    <button onclick="setReadingStyle('color', '#c00000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#c00000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #c00000;" data-value="#c00000" title="진한 빨강"></button>
-                                    <button onclick="setReadingStyle('color', '#385723')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#385723' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #385723;" data-value="#385723" title="진한 초록"></button>
-                                    <button onclick="setReadingStyle('color', '#7030a0')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#7030a0' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #7030a0;" data-value="#7030a0" title="보라"></button>
-
-                                    <!-- Custom Picker -->
+                                    <button onclick="setReadingStyle('color', '#000000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#000000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #000000;" data-value="#000000"></button>
+                                    <button onclick="setReadingStyle('color', '#2b579a')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#2b579a' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #2b579a;" data-value="#2b579a"></button>
+                                    <button onclick="setReadingStyle('color', '#c00000')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#c00000' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #c00000;" data-value="#c00000"></button>
+                                    <button onclick="setReadingStyle('color', '#385723')" class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedColor === '#385723' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #385723;" data-value="#385723"></button>
+                                    
                                     <div class="relative group">
-                                        <label class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden ${savedColor && !['#000000', '#2b579a', '#c00000', '#385723', '#7030a0'].includes(savedColor) ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" title="사용자 지정 색상">
+                                        <label class="setting-btn-color w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden ${savedColor && !['#000000', '#2b579a', '#c00000', '#385723', '#7030a0'].includes(savedColor) ? 'ring-2 ring-purple-500 ring-offset-2' : ''}">
                                             <span class="text-xs">🎨</span>
                                             <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" 
                                                 value="${savedColor && savedColor.startsWith('#') ? savedColor : '#000000'}"
@@ -1379,7 +1424,33 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
                                 </div>
                             </div>
 
-                            <!-- 6. Data Refresh -->
+                            <!-- 6. Highlight Color (New) -->
+                            <div class="mb-5">
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Highlight Color</label>
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <!-- Default Yellow -->
+                                    <button onclick="setReadingStyle('highlight', '#fef08a')" 
+                                        class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedHighlight === '#fef08a' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" 
+                                        style="background-color: #fef08a;" data-value="#fef08a" title="노랑"></button>
+                                    
+                                    <button onclick="setReadingStyle('highlight', '#bbf7d0')" class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedHighlight === '#bbf7d0' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #bbf7d0;" data-value="#bbf7d0" title="초록"></button>
+                                    <button onclick="setReadingStyle('highlight', '#bfdbfe')" class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedHighlight === '#bfdbfe' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #bfdbfe;" data-value="#bfdbfe" title="파랑"></button>
+                                    <button onclick="setReadingStyle('highlight', '#fbcfe8')" class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedHighlight === '#fbcfe8' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #fbcfe8;" data-value="#fbcfe8" title="분홍"></button>
+                                    <button onclick="setReadingStyle('highlight', '#e5e7eb')" class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 transition-all hover:scale-110 ${savedHighlight === '#e5e7eb' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}" style="background-color: #e5e7eb;" data-value="#e5e7eb" title="회색"></button>
+
+                                    <!-- Custom Picker -->
+                                    <div class="relative group">
+                                        <label class="setting-btn-highlight w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center cursor-pointer transition-all hover:scale-110 overflow-hidden ${savedHighlight && !['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#e5e7eb'].includes(savedHighlight) ? 'ring-2 ring-purple-500 ring-offset-2' : ''}">
+                                            <span class="text-xs">🖊️</span>
+                                            <input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full p-0 border-0" 
+                                                value="${savedHighlight && savedHighlight.startsWith('#') ? savedHighlight : '#fef08a'}"
+                                                oninput="setReadingStyle('highlight', this.value)">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Data Refresh -->
                             <div class="pt-4 border-t border-gray-100 mt-4">
                                 <button onclick="refreshData()" class="w-full py-2.5 rounded-xl bg-gray-50 text-gray-600 text-xs font-bold hover:bg-gray-100 hover:text-purple-600 transition-colors flex items-center justify-center">
                                     <i class="fas fa-sync-alt mr-2"></i> 데이터 새로고침 (업데이트 확인)
@@ -1429,7 +1500,7 @@ async function showReadingScreen(dayNumber, pushHistory = true) {
 
   // Init Active Buttons
   setTimeout(() => {
-    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight, savedColor);
+    initSettingsUI(savedSize, savedFont, savedHeight, savedWeight, savedColor, savedHighlight);
   }, 50);
 }
 async function completeReading(dayNumber) {
