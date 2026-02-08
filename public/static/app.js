@@ -1,6 +1,6 @@
 // ==========================================
-// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed32)
-console.log("🚀 VERSION FIXED32 LOADED: Theme-Specific Settings & Custom Highlight");
+// 🚀 HARASH BIBLE READING - CLIENT APP (v=fixed33)
+console.log("🚀 VERSION FIXED33 LOADED: Registration Phone Number Fix");
 
 // 🚨 EMERGENCY FIX: Force clear plan cache to apply date correction
 try {
@@ -436,7 +436,7 @@ function showRegisterScreen() {
 async function handleRegister(e) {
   e.preventDefault();
   const name = document.getElementById('regName').value;
-  const phone = document.getElementById('regPhone').value;
+  const phone = document.getElementById('regPhone').value.replace(/-/g, '');
   const pin = document.getElementById('regPin').value;
 
   try {
